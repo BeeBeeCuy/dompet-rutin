@@ -463,10 +463,11 @@ const App = {
       errorBox.hidden = false;
       return;
     }
-    if (!nama) {
-      errorBox.textContent = 'Nama transaksi wajib diisi.';
-      errorBox.hidden = false;
-      return;
+    // Nama OPSIONAL (amendemen user 30 Okt 2026): bila kosong, otomatis memakai nama kategori.
+    let namaFinal = nama;
+    if (!namaFinal) {
+      const katObj = this.kategoriList.find(k => k.id === kategoriId);
+      namaFinal = katObj ? katObj.nama : tipe;
     }
     if (!tanggal || !waktu) {
       errorBox.textContent = 'Tanggal dan waktu wajib diisi.';
@@ -489,7 +490,7 @@ const App = {
             tipe: tipe,
             nominal: nominal,
             arah_saldo: isPengeluaran ? '-' : '+',
-            nama: nama,
+            nama: namaFinal,
             kategori_id: kategoriId,
             tanggal: tanggal,
             waktu: waktu,
@@ -506,7 +507,7 @@ const App = {
           tipe: tipe,
           nominal: nominal,
           arah_saldo: isPengeluaran ? '-' : '+',
-          nama: nama,
+          nama: namaFinal,
           kategori_id: kategoriId,
           tanggal: tanggal,
           waktu: waktu,
