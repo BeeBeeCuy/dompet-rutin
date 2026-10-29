@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#164229">
+  <meta name="description" content="Dompet Rutin - Pencatat Keuangan, Hutang Piutang & Patungan Offline">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23164229'><path d='M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Dompet Rutin</title>
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Header Utama -->
+    <header class="app-header">
+      <div class="header-left">
+        <span class="greeting-time" id="txt-greeting-time">Halo,</span>
+        <h1 class="user-name" id="txt-user-name">Pengguna</h1>
+      </div>
+      <div class="header-right">
+        <span class="badge-offline" title="Tersimpan lokal di HP">Offline</span>
+      </div>
+    </header>
+
+    <!-- Kontainer Tampilan Konten per Tab -->
+    <main class="tab-content-container">
+      <!-- TAB 1: HOME -->
+      <section id="tab-home" class="tab-pane active">
+        <!-- Kartu Saldo Kas -->
+        <div class="card card-saldo">
+          <div class="card-label">Saldo Kas Saat Ini</div>
+          <div class="card-value" id="home-saldo-kas">Rp0</div>
+          <div class="card-subtext" id="home-arus-kas-sub">Masuk Rp0 · Keluar Rp0 bulan ini</div>
+        </div>
+
+        <!-- Kartu Hutang / Piutang Ringkas -->
+        <div class="grid-two-cards">
+          <div class="card card-mini card-piutang">
+            <div class="mini-label">Akan Diterima</div>
+            <div class="mini-value" id="home-total-piutang">Rp0</div>
+            <div class="mini-subtext">*Belum menjadi kas</div>
+          </div>
+          <div class="card card-mini card-hutang">
+            <div class="mini-label">Harus Dibayar</div>
+            <div class="mini-value" id="home-total-hutang">Rp0</div>
+            <div class="mini-subtext">Total kewajiban aktif</div>
+          </div>
+        </div>
+
+        <!-- Kartu Budget Bulanan -->
+        <div class="card card-budget">
+          <div class="budget-header">
+            <div>
+              <div class="card-label">Budget Bulan Ini</div>
+              <div class="budget-numbers" id="home-budget-ratio">Rp0 / Rp0</div>
+            </div>
+            <span class="status-pill status-aman" id="home-budget-status">AMAN</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="home-budget-progress" style="width: 0%;"></div>
+          </div>
+          <div class="budget-footer" id="home-budget-sisa">Sisa budget: Rp0 (0%)</div>
+        </div>
+
+        <!-- Kebutuhan Terdekat Placeholder -->
+        <div class="section-block">
+          <div class="section-title-row">
+            <h2 class="section-title">Kebutuhan Terdekat</h2>
+            <button type="button" class="btn-text" id="btn-lihat-semua-kebutuhan">Lihat Semua</button>
+          </div>
+          <div class="empty-state-box">
+            <p>Belum ada tagihan atau belanja terdekat.</p>
+          </div>
+        </div>
+
+        <!-- Transaksi Terakhir Placeholder -->
+        <div class="section-block">
+          <div class="section-title-row">
+            <h2 class="section-title">Transaksi Terakhir</h2>
+            <button type="button" class="btn-text" id="btn-lihat-semua-transaksi">Lihat Semua</button>
+          </div>
+          <div class="empty-state-box" id="home-empty-transaksi">
+            <p>Belum ada transaksi tercatat.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: TRANSAKSI (Placeholder Kerangka) -->
+      <section id="tab-transaksi" class="tab-pane">
+        <div class="placeholder-pane">
+          <h2>Catatan Transaksi</h2>
+          <p class="text-muted">Akan aktif penuh pada Tahap 1.</p>
+        </div>
+      </section>
+
+      <!-- TAB 3: HUTANG (Placeholder Kerangka) -->
+      <section id="tab-hutang" class="tab-pane">
+        <div class="placeholder-pane">
+          <h2>Hutang & Piutang</h2>
+          <p class="text-muted">Akan aktif penuh pada Tahap 2.</p>
+        </div>
+      </section>
+
+      <!-- TAB 4: KEBUTUHAN (Placeholder Kerangka) -->
+      <section id="tab-kebutuhan" class="tab-pane">
+        <div class="placeholder-pane">
+          <h2>Kebutuhan Rutin</h2>
+          <p class="text-muted">Akan aktif penuh pada Tahap 4.</p>
+        </div>
+      </section>
+
+      <!-- TAB 5: PROFIL (Placeholder Kerangka) -->
+      <section id="tab-profil" class="tab-pane">
+        <div class="placeholder-pane">
+          <h2>Profil & Cadangan Data</h2>
+          <p class="text-muted">Akan aktif penuh pada Tahap 5 & 6.</p>
+          <div style="margin-top: 1.5rem;">
+            <button type="button" class="btn btn-secondary" id="btn-buka-ulang-penyiapan">Edit Nama & Saldo Awal</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FAB (Floating Action Button) Konteks -->
+    <div class="fab-wrapper">
+      <div class="fab-menu" id="fab-menu" hidden>
+        <!-- Item aksi kontekstual akan diisi per tab di tahap lanjut -->
+        <button type="button" class="fab-item-btn" id="fab-act-1">
+          <span class="fab-item-label">Catat Transaksi</span>
+          <span class="fab-item-icon">✎</span>
+        </button>
+      </div>
+      <button type="button" class="fab-main-btn" id="btn-fab-main" aria-label="Tambah Baru">
+        <span class="fab-icon-plus">+</span>
+      </button>
+    </div>
+
+    <!-- Navigasi Bawah 5 Tab -->
+    <nav class="bottom-nav">
+      <button type="button" class="nav-item active" data-tab="tab-home">
+        <span class="nav-icon">⌂</span>
+        <span class="nav-label">Home</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="tab-transaksi">
+        <span class="nav-icon">⇄</span>
+        <span class="nav-label">Transaksi</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="tab-hutang">
+        <span class="nav-icon">👥</span>
+        <span class="nav-label">Hutang</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="tab-kebutuhan">
+        <span class="nav-icon">📅</span>
+        <span class="nav-label">Kebutuhan</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="tab-profil">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Profil</span>
+      </button>
+    </nav>
+
+    <!-- MODAL PENYIAPAN PERTAMA (ONBOARDING) -->
+    <div class="modal-overlay" id="modal-onboarding" hidden>
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h2 class="modal-title">Selamat Datang di Dompet Rutin</h2>
+          <p class="modal-subtitle">Aplikasi catatan keuangan offline, aman di HP Anda sendiri.</p>
+        </div>
+        <form id="form-onboarding" class="modal-form" novalidate>
+          <div class="form-group">
+            <label for="inp-onboarding-nama" class="form-label">Nama Panggilan Anda <span class="required">*</span></label>
+            <input type="text" id="inp-onboarding-nama" class="form-control" placeholder="Contoh: Biby" required maxlength="30" autocomplete="given-name">
+            <small class="form-hint">Digunakan untuk sapaan di aplikasi.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="inp-onboarding-saldo" class="form-label">Saldo Awal Kas Riil Saat Ini (Opsional)</label>
+            <div class="input-prefix-wrapper">
+              <span class="input-prefix">Rp</span>
+              <input type="text" inputmode="numeric" id="inp-onboarding-saldo" class="form-control with-prefix" placeholder="0">
+            </div>
+            <small class="form-hint">Uang fisik/rekening riil saat ini. Tipe transaksi: SALDO_AWAL (tidak mengotori budget bulanan).</small>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary btn-block" id="btn-simpan-onboarding">Mulai Sekarang</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
