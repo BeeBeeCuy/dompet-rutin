@@ -11,11 +11,16 @@
   --text-dark: #1E231F;
   --text-muted: #6B726C;
   --border-color: #E2E0D4;
+  --border-focus: #164229;
+  --warna-masuk: #228B22;
+  --warna-keluar: #C85A32;
+  --warna-waspada: #D9822B;
+  --warna-melebihi: #D32F2F;
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 12px rgba(22,66,41,0.08);
+  --shadow-md: 0 4px 14px rgba(22,66,41,0.08);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -60,7 +65,7 @@ body {
 }
 
 .greeting-time {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   display: block;
 }
@@ -112,6 +117,15 @@ body {
   margin-bottom: 0.9rem;
 }
 
+.card.clickable {
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.card.clickable:active {
+  transform: scale(0.99);
+}
+
 .card-saldo {
   background: linear-gradient(145deg, #FFFFFF, #F1F4EE);
   border-left: 5px solid var(--hijau-tua);
@@ -126,6 +140,12 @@ body {
   margin-bottom: 0.35rem;
 }
 
+.tap-hint {
+  font-size: 0.85rem;
+  color: var(--hijau-tua);
+  margin-left: 0.25rem;
+}
+
 .card-value {
   font-size: 1.75rem;
   font-weight: 800;
@@ -134,9 +154,10 @@ body {
 }
 
 .card-subtext {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   margin-top: 0.4rem;
+  font-weight: 500;
 }
 
 /* Grid 2 Kartu (Piutang & Hutang) */
@@ -189,7 +210,7 @@ body {
 }
 
 .budget-numbers {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-dark);
 }
@@ -207,6 +228,21 @@ body {
   color: var(--hijau-tua);
 }
 
+.status-waspada {
+  background-color: #FEF3E6;
+  color: var(--warna-waspada);
+}
+
+.status-melebihi {
+  background-color: #FEECEB;
+  color: var(--warna-melebihi);
+}
+
+.status-belum {
+  background-color: #EDECE6;
+  color: var(--text-muted);
+}
+
 .progress-bar-bg {
   width: 100%;
   height: 8px;
@@ -220,7 +256,15 @@ body {
   height: 100%;
   background-color: var(--hijau-tua);
   border-radius: 999px;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.progress-bar-fill.fill-waspada {
+  background-color: var(--warna-waspada);
+}
+
+.progress-bar-fill.fill-melebihi {
+  background-color: var(--warna-melebihi);
 }
 
 .budget-footer {
@@ -266,6 +310,10 @@ body {
   color: var(--text-muted);
 }
 
+.empty-state-box[hidden] {
+  display: none !important;
+}
+
 .placeholder-pane {
   padding: 2rem 1rem;
   text-align: center;
@@ -275,13 +323,236 @@ body {
   margin-top: 1rem;
 }
 
-.text-muted {
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  margin-top: 0.35rem;
+/* ==================== DAFTAR TRANSAKSI (TAB 2 & HOME) ==================== */
+.tx-filter-header {
+  position: sticky;
+  top: 58px;
+  background-color: var(--bg-krem);
+  padding: 0.35rem 0 0.75rem;
+  z-index: 8;
 }
 
-/* Navigasi Bawah 5 Tab */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.search-input {
+  width: 100%;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: #FFFFFF;
+  padding: 0.5rem 2.2rem 0.5rem 2.4rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text-dark);
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--hijau-tua);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+}
+
+.chip-filter-row {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+}
+
+.filter-chip {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: #FFFFFF;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-chip.active {
+  background: var(--hijau-tua);
+  color: #FFFFFF;
+  border-color: var(--hijau-tua);
+}
+
+/* Pengelompokan Bulan & Tanggal */
+.tx-month-group {
+  margin-bottom: 1.25rem;
+}
+
+.tx-month-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--hijau-tua);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+  padding-left: 0.2rem;
+}
+
+.tx-date-group {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.65rem;
+  overflow: hidden;
+}
+
+.tx-date-header {
+  padding: 0.45rem 0.85rem;
+  background: #F4F2E8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tx-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid #F0EEE4;
+  cursor: pointer;
+}
+
+.tx-row:last-child {
+  border-bottom: none;
+}
+
+.tx-row:active {
+  background-color: #FAF9F5;
+}
+
+.tx-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.tx-badge-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.badge-masuk {
+  background-color: var(--hijau-soft);
+  color: var(--warna-masuk);
+}
+
+.badge-keluar {
+  background-color: var(--terakota-soft);
+  color: var(--warna-keluar);
+}
+
+.badge-saldo-awal {
+  background-color: #EFEFEF;
+  color: #555555;
+}
+
+.tx-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tx-nama {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tx-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.tx-row-right {
+  text-align: right;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.tx-nominal {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.nominal-masuk {
+  color: var(--warna-masuk);
+}
+
+.nominal-keluar {
+  color: var(--warna-keluar);
+}
+
+.nominal-netral {
+  color: var(--text-dark);
+}
+
+.tx-tipe-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* Item Dibatalkan (Void) */
+.tx-row.dibatalkan {
+  opacity: 0.6;
+}
+
+.tx-row.dibatalkan .tx-nama,
+.tx-row.dibatalkan .tx-nominal {
+  text-decoration: line-through;
+}
+
+.badge-void {
+  font-size: 0.62rem;
+  font-weight: 700;
+  background-color: #F8D7DA;
+  color: #721C24;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+/* ==================== BOTTOM NAV & FAB ==================== */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -328,7 +599,7 @@ body {
   color: var(--hijau-tua);
 }
 
-/* FAB Mengambang */
+/* FAB Wrapper */
 .fab-wrapper {
   position: fixed;
   bottom: 74px;
@@ -340,6 +611,16 @@ body {
   .fab-wrapper {
     right: 1.25rem;
   }
+}
+
+.fab-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 90;
 }
 
 .fab-main-btn {
@@ -354,19 +635,19 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.15s ease, background-color 0.15s ease;
-  min-width: 44px;
-  min-height: 44px;
+  position: relative;
+  z-index: 96;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.fab-main-btn:active {
-  transform: scale(0.92);
+.fab-main-btn.open {
+  transform: rotate(45deg);
+  background-color: #555555;
 }
 
 .fab-icon-plus {
   font-size: 2rem;
   line-height: 1;
-  margin-top: -2px;
 }
 
 .fab-menu {
@@ -375,39 +656,48 @@ body {
   right: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
   align-items: flex-end;
+  z-index: 96;
 }
 
 .fab-item-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   background: white;
   border: 1px solid var(--border-color);
-  padding: 0.5rem 0.85rem;
+  padding: 0.45rem 0.85rem;
   border-radius: 999px;
   box-shadow: var(--shadow-md);
   cursor: pointer;
   color: var(--text-dark);
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 700;
   min-height: 44px;
 }
 
 .fab-item-icon {
-  background: var(--hijau-tua);
-  color: white;
   width: 28px;
   height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
-/* Modal Penyiapan Pertama */
+.fab-icon-minus {
+  background-color: var(--terakota);
+}
+
+.fab-icon-plus {
+  background-color: var(--hijau-tua);
+}
+
+/* ==================== MODAL & SHEETS ==================== */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -422,7 +712,8 @@ body {
   justify-content: center;
 }
 
-.modal-overlay[hidden] {
+.modal-overlay[hidden],
+[hidden] {
   display: none !important;
 }
 
@@ -430,11 +721,17 @@ body {
   background: var(--bg-card);
   width: 100%;
   max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
-  padding: 1.5rem 1.25rem 2rem;
+  padding: 1.25rem 1.25rem 2rem;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-sheet-compact {
+  max-height: 80vh;
 }
 
 @keyframes slideUp {
@@ -442,32 +739,101 @@ body {
   to { transform: translateY(0); }
 }
 
-.modal-header {
-  margin-bottom: 1.25rem;
+.modal-header-with-close {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
 .modal-title {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: var(--hijau-tua);
-  margin-bottom: 0.3rem;
+}
+
+.modal-title.text-danger {
+  color: var(--warna-melebihi);
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .modal-subtitle {
   font-size: 0.85rem;
   color: var(--text-muted);
+  margin-bottom: 0.5rem;
 }
 
-/* Formulir & Tombol */
+/* Toggle Tipe Transaksi */
+.type-toggle-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  background: #EAE7DC;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+.type-toggle-btn {
+  border: none;
+  background: none;
+  padding: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.type-toggle-btn.active#btn-type-pengeluaran {
+  background: var(--terakota);
+  color: white;
+}
+
+.type-toggle-btn.active#btn-type-pemasukan {
+  background: var(--hijau-tua);
+  color: white;
+}
+
+/* Alert Error */
+.form-alert-error {
+  background-color: #FEECEB;
+  border: 1px solid #F5C6CB;
+  color: var(--warna-melebihi);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+/* Formulir Controls */
 .form-group {
-  margin-bottom: 1.15rem;
+  margin-bottom: 1rem;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
 .form-label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
   color: var(--text-dark);
 }
 
@@ -477,9 +843,9 @@ body {
 
 .form-control {
   width: 100%;
-  height: 48px;
-  padding: 0.65rem 0.9rem;
-  font-size: 1rem;
+  height: 46px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.95rem;
   font-family: inherit;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -510,6 +876,23 @@ body {
 
 .form-control.with-prefix {
   padding-left: 2.4rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.select-control {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236B726C'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.textarea-control {
+  height: auto;
+  min-height: 60px;
+  resize: vertical;
 }
 
 .form-hint {
@@ -517,11 +900,75 @@ body {
   font-size: 0.72rem;
   color: var(--text-muted);
   margin-top: 0.35rem;
-  line-height: 1.3;
 }
 
+/* Metode Chips: Cash, QRIS, Transfer (§3.9 PRD) */
+.method-chip-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.method-chip {
+  height: 44px;
+  border: 1px solid var(--border-color);
+  background: #FAFAFA;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.method-chip.active {
+  background: var(--hijau-soft);
+  color: var(--hijau-tua);
+  border-color: var(--hijau-tua);
+  font-weight: 700;
+}
+
+/* Detail Transaksi Sheet */
+.detail-content {
+  padding: 0.5rem 0 1rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #F0EEE4;
+  font-size: 0.9rem;
+}
+
+.detail-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.detail-value {
+  font-weight: 700;
+  color: var(--text-dark);
+  text-align: right;
+  max-width: 60%;
+}
+
+.detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.void-warning-text {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 1rem;
+}
+
+/* Tombol-Tombol */
 .modal-actions {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
 
 .btn {
@@ -555,4 +1002,14 @@ body {
 .btn-secondary {
   background-color: #EAE8DC;
   color: var(--text-dark);
+}
+
+.btn-danger {
+  background-color: var(--warna-melebihi);
+  color: white;
+}
+
+.btn-danger-soft {
+  background-color: #FEECEB;
+  color: var(--warna-melebihi);
 }
