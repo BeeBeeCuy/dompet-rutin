@@ -36,23 +36,23 @@
 
         <!-- Kartu Hutang / Piutang Ringkas -->
         <div class="grid-two-cards">
-          <div class="card card-mini card-piutang">
+          <div class="card card-mini card-piutang" id="btn-home-piutang">
             <div class="mini-label">Akan Diterima</div>
             <div class="mini-value" id="home-total-piutang">Rp0</div>
             <div class="mini-subtext">*Belum menjadi kas</div>
           </div>
-          <div class="card card-mini card-hutang">
+          <div class="card card-mini card-hutang" id="btn-home-hutang">
             <div class="mini-label">Harus Dibayar</div>
             <div class="mini-value" id="home-total-hutang">Rp0</div>
             <div class="mini-subtext">Total kewajiban aktif</div>
           </div>
         </div>
 
-        <!-- Kartu Budget Bulanan -->
-        <div class="card card-budget">
+        <!-- Kartu Budget Bulanan (Bisa diketuk untuk set/ubah budget) -->
+        <div class="card card-budget clickable" id="card-home-budget" title="Ketuk untuk mengatur budget">
           <div class="budget-header">
             <div>
-              <div class="card-label">Budget Bulan Ini</div>
+              <div class="card-label">Budget Bulan Ini <span class="tap-hint">✎</span></div>
               <div class="budget-numbers" id="home-budget-ratio">Rp0 / Rp0</div>
             </div>
             <span class="status-pill status-aman" id="home-budget-status">AMAN</span>
@@ -63,7 +63,7 @@
           <div class="budget-footer" id="home-budget-sisa">Sisa budget: Rp0 (0%)</div>
         </div>
 
-        <!-- Kebutuhan Terdekat Placeholder -->
+        <!-- Kebutuhan Terdekat -->
         <div class="section-block">
           <div class="section-title-row">
             <h2 class="section-title">Kebutuhan Terdekat</h2>
@@ -74,11 +74,14 @@
           </div>
         </div>
 
-        <!-- Transaksi Terakhir Placeholder -->
+        <!-- Transaksi Terakhir (Maksimal 4) -->
         <div class="section-block">
           <div class="section-title-row">
             <h2 class="section-title">Transaksi Terakhir</h2>
             <button type="button" class="btn-text" id="btn-lihat-semua-transaksi">Lihat Semua</button>
+          </div>
+          <div class="tx-list-container" id="home-tx-terbaru-list">
+            <!-- Diisi dinamis -->
           </div>
           <div class="empty-state-box" id="home-empty-transaksi">
             <p>Belum ada transaksi tercatat.</p>
@@ -86,15 +89,33 @@
         </div>
       </section>
 
-      <!-- TAB 2: TRANSAKSI (Placeholder Kerangka) -->
+      <!-- TAB 2: TRANSAKSI -->
       <section id="tab-transaksi" class="tab-pane">
-        <div class="placeholder-pane">
-          <h2>Catatan Transaksi</h2>
-          <p class="text-muted">Akan aktif penuh pada Tahap 1.</p>
+        <!-- Bilah Pencarian & Filter -->
+        <div class="tx-filter-header">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="inp-cari-transaksi" class="search-input" placeholder="Cari nama, kategori, catatan...">
+            <button type="button" class="search-clear-btn" id="btn-clear-search" hidden aria-label="Hapus pencarian">✕</button>
+          </div>
+          <div class="chip-filter-row">
+            <button type="button" class="filter-chip active" data-filter="SEMUA">Semua</button>
+            <button type="button" class="filter-chip" data-filter="MASUK">Masuk (+)</button>
+            <button type="button" class="filter-chip" data-filter="KELUAR">Keluar (−)</button>
+          </div>
+        </div>
+
+        <!-- Daftar Berkelompok Transaksi -->
+        <div class="tx-grouped-container" id="tx-grouped-list">
+          <!-- Render daftar bulan & tanggal -->
+        </div>
+
+        <div class="empty-state-box" id="tx-empty-state" hidden>
+          <p>Tidak ada transaksi yang sesuai.</p>
         </div>
       </section>
 
-      <!-- TAB 3: HUTANG (Placeholder Kerangka) -->
+      <!-- TAB 3: HUTANG (Tahap 2) -->
       <section id="tab-hutang" class="tab-pane">
         <div class="placeholder-pane">
           <h2>Hutang & Piutang</h2>
@@ -102,7 +123,7 @@
         </div>
       </section>
 
-      <!-- TAB 4: KEBUTUHAN (Placeholder Kerangka) -->
+      <!-- TAB 4: KEBUTUHAN (Tahap 4) -->
       <section id="tab-kebutuhan" class="tab-pane">
         <div class="placeholder-pane">
           <h2>Kebutuhan Rutin</h2>
@@ -110,12 +131,13 @@
         </div>
       </section>
 
-      <!-- TAB 5: PROFIL (Placeholder Kerangka) -->
+      <!-- TAB 5: PROFIL -->
       <section id="tab-profil" class="tab-pane">
         <div class="placeholder-pane">
-          <h2>Profil & Cadangan Data</h2>
+          <h2>Profil & Pengaturan</h2>
           <p class="text-muted">Akan aktif penuh pada Tahap 5 & 6.</p>
-          <div style="margin-top: 1.5rem;">
+          <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <button type="button" class="btn btn-secondary" id="btn-profil-atur-budget">Atur Budget Bulanan</button>
             <button type="button" class="btn btn-secondary" id="btn-buka-ulang-penyiapan">Edit Nama & Saldo Awal</button>
           </div>
         </div>
@@ -124,15 +146,19 @@
 
     <!-- FAB (Floating Action Button) Konteks -->
     <div class="fab-wrapper">
+      <div class="fab-backdrop" id="fab-backdrop" hidden></div>
       <div class="fab-menu" id="fab-menu" hidden>
-        <!-- Item aksi kontekstual akan diisi per tab di tahap lanjut -->
-        <button type="button" class="fab-item-btn" id="fab-act-1">
-          <span class="fab-item-label">Catat Transaksi</span>
-          <span class="fab-item-icon">✎</span>
+        <button type="button" class="fab-item-btn fab-item-keluar" id="fab-act-pengeluaran">
+          <span class="fab-item-label">Pengeluaran</span>
+          <span class="fab-item-icon fab-icon-minus">−</span>
+        </button>
+        <button type="button" class="fab-item-btn fab-item-masuk" id="fab-act-pemasukan">
+          <span class="fab-item-label">Pemasukan</span>
+          <span class="fab-item-icon fab-icon-plus">+</span>
         </button>
       </div>
       <button type="button" class="fab-main-btn" id="btn-fab-main" aria-label="Tambah Baru">
-        <span class="fab-icon-plus">+</span>
+        <span class="fab-icon-plus" id="fab-main-icon">+</span>
       </button>
     </div>
 
@@ -160,7 +186,152 @@
       </button>
     </nav>
 
-    <!-- MODAL PENYIAPAN PERTAMA (ONBOARDING) -->
+    <!-- ==================== MODAL & SHEETS ==================== -->
+
+    <!-- 1. FORMULIR TRANSAKSI (PEMASUKAN & PENGELUARAN) -->
+    <div class="modal-overlay" id="modal-form-transaksi" hidden>
+      <div class="modal-sheet">
+        <div class="modal-header-with-close">
+          <h2 class="modal-title" id="form-tx-title">Catat Transaksi</h2>
+          <button type="button" class="btn-close-modal" id="btn-close-form-tx" aria-label="Tutup">✕</button>
+        </div>
+
+        <form id="form-transaksi" class="modal-form" novalidate>
+          <input type="hidden" id="form-tx-id">
+          
+          <!-- Pilihan Tipe -->
+          <div class="type-toggle-row">
+            <button type="button" class="type-toggle-btn active" id="btn-type-pengeluaran" data-tipe="PENGELUARAN">Pengeluaran (−)</button>
+            <button type="button" class="type-toggle-btn" id="btn-type-pemasukan" data-tipe="PEMASUKAN">Pemasukan (+)</button>
+          </div>
+
+          <!-- Pesan Error Validasi -->
+          <div class="form-alert-error" id="form-tx-error" hidden></div>
+
+          <!-- Nominal -->
+          <div class="form-group">
+            <label for="inp-tx-nominal" class="form-label">Nominal <span class="required">*</span></label>
+            <div class="input-prefix-wrapper">
+              <span class="input-prefix">Rp</span>
+              <input type="text" inputmode="numeric" id="inp-tx-nominal" class="form-control with-prefix" placeholder="0" required>
+            </div>
+          </div>
+
+          <!-- Nama Transaksi -->
+          <div class="form-group">
+            <label for="inp-tx-nama" class="form-label">Nama Transaksi <span class="required">*</span></label>
+            <input type="text" id="inp-tx-nama" class="form-control" placeholder="Contoh: Belanja makan siang" required maxlength="60">
+          </div>
+
+          <!-- Kategori -->
+          <div class="form-group">
+            <label for="sel-tx-kategori" class="form-label">Kategori <span class="required">*</span></label>
+            <select id="sel-tx-kategori" class="form-control select-control" required>
+              <!-- Diisi dinamis sesuai tipe -->
+            </select>
+          </div>
+
+          <!-- Baris Tanggal & Waktu -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="inp-tx-tanggal" class="form-label">Tanggal <span class="required">*</span></label>
+              <input type="date" id="inp-tx-tanggal" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="inp-tx-waktu" class="form-label">Waktu <span class="required">*</span></label>
+              <input type="time" id="inp-tx-waktu" class="form-control" required>
+            </div>
+          </div>
+
+          <!-- Metode Pembayaran: Tepat 3 Chip (§3.9 Lampiran B) -->
+          <div class="form-group">
+            <label class="form-label">Metode Pembayaran <span class="required">*</span></label>
+            <div class="method-chip-group" id="group-tx-metode">
+              <button type="button" class="method-chip active" data-metode="Cash">Cash</button>
+              <button type="button" class="method-chip" data-metode="QRIS">QRIS</button>
+              <button type="button" class="method-chip" data-metode="Transfer">Transfer</button>
+            </div>
+          </div>
+
+          <!-- Catatan Opsional -->
+          <div class="form-group">
+            <label for="inp-tx-catatan" class="form-label">Catatan (Opsional)</label>
+            <textarea id="inp-tx-catatan" class="form-control textarea-control" rows="2" placeholder="Catatan tambahan bila ada..."></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary btn-block" id="btn-simpan-transaksi">Simpan Transaksi</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 2. LEMBAR DETAIL TRANSAKSI -->
+    <div class="modal-overlay" id="modal-detail-transaksi" hidden>
+      <div class="modal-sheet">
+        <div class="modal-header-with-close">
+          <h2 class="modal-title">Detail Transaksi</h2>
+          <button type="button" class="btn-close-modal" id="btn-close-detail-tx" aria-label="Tutup">✕</button>
+        </div>
+
+        <div class="detail-content" id="detail-tx-content">
+          <!-- Diisi dinamis -->
+        </div>
+
+        <div class="detail-actions" id="detail-tx-actions">
+          <button type="button" class="btn btn-secondary" id="btn-detail-edit">Ubah</button>
+          <button type="button" class="btn btn-danger-soft" id="btn-detail-void">Batalkan Transaksi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. DIALOG PEMBATALAN (VOID) TRANSAKSI -->
+    <div class="modal-overlay" id="modal-void-transaksi" hidden>
+      <div class="modal-sheet modal-sheet-compact">
+        <div class="modal-header-with-close">
+          <h2 class="modal-title text-danger">Batalkan Transaksi</h2>
+          <button type="button" class="btn-close-modal" id="btn-close-void-tx" aria-label="Tutup">✕</button>
+        </div>
+        <p class="void-warning-text">Transaksi yang dibatalkan akan dicoret, dikeluarkan dari saldo kas, ringkasan bulanan, dan budget. Tindakan ini memerlukan alasan.</p>
+        
+        <form id="form-void-tx" novalidate>
+          <div class="form-group">
+            <label for="inp-void-alasan" class="form-label">Alasan Pembatalan <span class="required">*</span></label>
+            <input type="text" id="inp-void-alasan" class="form-control" placeholder="Contoh: Salah input nominal / transaksi fiktif" required maxlength="100">
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-danger btn-block" id="btn-konfirmasi-void">Ya, Batalkan Transaksi Ini</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 4. MODAL SET BUDGET BULANAN -->
+    <div class="modal-overlay" id="modal-budget-setting" hidden>
+      <div class="modal-sheet modal-sheet-compact">
+        <div class="modal-header-with-close">
+          <h2 class="modal-title">Pengaturan Budget Bulanan</h2>
+          <button type="button" class="btn-close-modal" id="btn-close-budget" aria-label="Tutup">✕</button>
+        </div>
+        <p class="modal-subtitle">Batas maksimal pengeluaran konsumsi dalam satu bulan kalender.</p>
+
+        <form id="form-budget-setting" novalidate>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="inp-setting-budget" class="form-label">Nominal Budget Bulanan <span class="required">*</span></label>
+            <div class="input-prefix-wrapper">
+              <span class="input-prefix">Rp</span>
+              <input type="text" inputmode="numeric" id="inp-setting-budget" class="form-control with-prefix" placeholder="Contoh: 3.000.000" required>
+            </div>
+            <small class="form-hint">Ketik angka 0 bila ingin mengosongkan / menonaktifkan batas budget.</small>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary btn-block">Simpan Budget</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 5. MODAL ONBOARDING (PENYIAPAN PERTAMA) -->
     <div class="modal-overlay" id="modal-onboarding" hidden>
       <div class="modal-sheet">
         <div class="modal-header">
@@ -192,6 +363,7 @@
   </div>
 
   <script src="js/db.js"></script>
+  <script src="js/finance.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

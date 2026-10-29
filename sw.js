@@ -1,12 +1,13 @@
 // sw.js
-// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 0
-const CACHE_NAME = 'dompet-rutin-v1.0.0-t0';
+// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 1
+const CACHE_NAME = 'dompet-rutin-v1.1.0-t1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
   './css/style.css',
   './js/db.js',
+  './js/finance.js',
   './js/app.js',
   './icons/icon-192.png',
   './icons/icon-512.png'
@@ -36,7 +37,6 @@ self.addEventListener('activate', (event) => {
 
 // Cache-First dengan Network Fallback
 self.addEventListener('fetch', (event) => {
-  // Hanya tangani GET request lokal
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
@@ -54,7 +54,6 @@ self.addEventListener('fetch', (event) => {
         });
         return networkResponse;
       }).catch(() => {
-        // Fallback jika sepenuhnya offline dan aset belum ada di cache
         if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
           return caches.match('./index.html');
         }
