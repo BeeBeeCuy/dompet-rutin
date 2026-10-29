@@ -336,6 +336,17 @@ const App = {
       e.target.value = val > 0 ? val.toLocaleString('id-ID') : '';
     });
 
+    // Nama transaksi: mengetik manual mematikan isi-otomatis; mengganti kategori mengisi ulang nama bila masih otomatis.
+    const inpNamaForm = document.getElementById('inp-tx-nama');
+    const selKatForm = document.getElementById('sel-tx-kategori');
+    inpNamaForm?.addEventListener('input', () => { inpNamaForm.dataset.auto = '0'; });
+    selKatForm?.addEventListener('change', () => {
+      if (inpNamaForm && inpNamaForm.dataset.auto !== '0') {
+        const katObj = this.kategoriList.find(k => k.id === selKatForm.value);
+        if (katObj) inpNamaForm.value = katObj.nama;
+      }
+    });
+
     // Tombol Toggle Tipe
     const btnPengeluaran = document.getElementById('btn-type-pengeluaran');
     const btnPemasukan = document.getElementById('btn-type-pemasukan');
@@ -378,6 +389,13 @@ const App = {
       const isSel = selectedId === k.id ? 'selected' : '';
       return `<option value="${k.id}" ${isSel}>${k.nama}</option>`;
     }).join('');
+
+    // Nama transaksi terisi OTOMATIS dari kategori terpilih, kecuali user sudah mengetik sendiri (dataset.auto = '0').
+    const inpNamaSync = document.getElementById('inp-tx-nama');
+    if (inpNamaSync && inpNamaSync.dataset.auto !== '0') {
+      const katAktif = filtered.find(k => k.id === selectedId) || filtered[0];
+      if (katAktif) inpNamaSync.value = katAktif.nama;
+    }
   },
 
   bukaFormulirTransaksi(tipeAwal = 'PENGELUARAN', editTx = null) {
@@ -408,6 +426,14 @@ const App = {
       btnPemasukan.classList.toggle('active', !isPengeluaran);
       this.populateKategoriSelect(editTx.tipe, editTx.kategori_id);
 
+      // Kembalikan nama tersimpan; mode otomatis hanya bila nama == nama kategorinya.
+      const inpNamaEdit = document.getElementById('inp-tx-nama');
+      if (inpNamaEdit) {
+        inpNamaEdit.value = editTx.nama || '';
+        const katEdit = this.kategoriList.find(k => k.id === editTx.kategori_id);
+        inpNamaEdit.dataset.auto = (katEdit && editTx.nama === katEdit.nama) ? '1' : '0';
+      }
+
       // Set metode chip
       document.querySelectorAll('#group-tx-metode .method-chip').forEach(c => {
         c.classList.toggle('active', c.getAttribute('data-metode') === editTx.metode);
@@ -425,6 +451,8 @@ const App = {
       const isPengeluaran = tipeAwal === 'PENGELUARAN';
       btnPengeluaran.classList.toggle('active', isPengeluaran);
       btnPemasukan.classList.toggle('active', !isPengeluaran);
+      const inpNamaBaru = document.getElementById('inp-tx-nama');
+      if (inpNamaBaru) inpNamaBaru.dataset.auto = '1';
       this.populateKategoriSelect(tipeAwal);
 
       // Default chip metode = Cash
@@ -445,7 +473,7 @@ const App = {
     const isPengeluaran = document.getElementById('btn-type-pengeluaran').classList.contains('active');
     const tipe = isPengeluaran ? 'PENGELUARAN' : 'PEMASUKAN';
     const nominal = Utils.parseRupiah(document.getElementById('inp-tx-nominal').value);
-    const nama = ''; // Kolom nama DIHAPUS (keputusan user 30 Okt 2026): judul transaksi selalu nama kategorinya (lihat namaFinal).
+    const nama = (document.getElementById('inp-tx-nama')?.value || '').trim();
     const kategoriId = document.getElementById('sel-tx-kategori').value;
     const tanggal = document.getElementById('inp-tx-tanggal').value;
     const waktu = document.getElementById('inp-tx-waktu').value;
