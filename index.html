@@ -7,7 +7,7 @@
   <meta name="description" content="Dompet Rutin - Pencatat Keuangan, Hutang Piutang & Patungan Offline">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23164229'><path d='M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>">
-  <link rel="stylesheet" href="css/style.css?v=131">
+  <link rel="stylesheet" href="css/style.css?v=132">
   <title>Dompet Rutin</title>
 </head>
 <body>
@@ -52,7 +52,7 @@
         <div class="card card-budget clickable" id="card-home-budget" title="Ketuk untuk mengatur budget">
           <div class="budget-header">
             <div>
-              <div class="card-label">Budget Bulan Ini <span class="tap-hint">✎</span></div>
+              <div class="card-label">Budget Bulan Ini <span class="tap-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span></div>
               <div class="budget-numbers" id="home-budget-ratio">Rp0 / Rp0</div>
             </div>
             <span class="status-pill status-aman" id="home-budget-status">AMAN</span>
@@ -91,7 +91,7 @@
       <section id="tab-transaksi" class="tab-pane">
         <div class="tx-filter-header">
           <div class="search-box">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
             <input type="text" id="inp-cari-transaksi" class="search-input" placeholder="Cari nama, kategori, catatan...">
             <button type="button" class="search-clear-btn" id="btn-clear-search" hidden aria-label="Hapus pencarian">✕</button>
           </div>
@@ -125,7 +125,7 @@
 
         <div class="hutang-action-bar">
           <button type="button" class="btn btn-secondary btn-sm" id="btn-buka-daftar-teman">
-            👥 Kelola Teman & Saldo Bersih
+            <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Kelola Teman & Saldo Bersih
           </button>
         </div>
 
@@ -428,7 +428,7 @@
 
         <!-- Tautan Patungan Asal (Bila ada) -->
         <div id="det-hutang-patungan-link-box" hidden class="patungan-source-box">
-          <span class="patungan-source-badge">👥 Bersumber dari Patungan</span>
+          <span class="patungan-source-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Bersumber dari Patungan</span>
           <button type="button" class="btn-text" id="btn-buka-patungan-dari-hutang">Lihat Rincian Patungan →</button>
         </div>
 
@@ -443,8 +443,8 @@
         <div class="detail-content" id="det-hutang-meta"></div>
 
         <div class="debt-primary-actions">
-          <button type="button" class="btn btn-primary btn-block" id="btn-buka-catat-bayar">💵 Catat Pembayaran</button>
-          <button type="button" class="btn btn-secondary btn-block" id="btn-salin-ringkasan-hutang">📋 Salin Ringkasan Tagihan</button>
+          <button type="button" class="btn btn-primary btn-block" id="btn-buka-catat-bayar"><svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg> Catat Pembayaran</button>
+          <button type="button" class="btn btn-secondary btn-block" id="btn-salin-ringkasan-hutang"><svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Salin Ringkasan Tagihan</button>
         </div>
 
         <div class="section-block">
@@ -714,7 +714,7 @@
           <div class="split-section-card">
             <div class="split-section-header">
               <h3 class="section-title">Pembagian Beban</h3>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-patungan-bagi-rata">⚖ Bagi Rata</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-patungan-bagi-rata"><svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="19" y2="15"/></svg> Bagi Rata</button>
             </div>
 
             <!-- Bagian Saya -->
@@ -867,8 +867,8 @@
     </div>
   </div>
 
-  <script src="js/db.js?v=131"></script>
-  <script src="js/finance.js?v=131"></script>
-  <script src="js/app.js?v=131"></script>
+  <script src="js/db.js?v=132"></script>
+  <script src="js/finance.js?v=132"></script>
+  <script src="js/app.js?v=132"></script>
 </body>
 </html>

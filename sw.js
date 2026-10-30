@@ -1,14 +1,14 @@
 // sw.js
-// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 3: Pengeluaran Bersama (Patungan) + perbaikan tampilan v1.3.1
-const CACHE_NAME = 'dompet-rutin-v1.3.1-t3';
+// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 3: Pengeluaran Bersama (Patungan) + perbaikan tampilan v1.3.2
+const CACHE_NAME = 'dompet-rutin-v1.3.2-t3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/style.css?v=131',
-  './js/db.js?v=131',
-  './js/finance.js?v=131',
-  './js/app.js?v=131',
+  './css/style.css?v=132',
+  './js/db.js?v=132',
+  './js/finance.js?v=132',
+  './js/app.js?v=132',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
