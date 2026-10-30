@@ -55,7 +55,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem 0.75rem;
+  height: 78px;
+  flex-shrink: 0;
+  padding: 0 1.25rem;
   background-color: var(--bg-krem);
   position: sticky;
   top: 0;
@@ -141,6 +143,12 @@ body {
   font-size: 0.85rem;
   color: var(--hijau-tua);
   margin-left: 0.25rem;
+}
+
+.tap-hint svg {
+  width: 12px;
+  height: 12px;
+  vertical-align: -1px;
 }
 
 .card-value {
@@ -353,10 +361,11 @@ body {
 /* ==================== TRANSAKSI TAB ==================== */
 .tx-filter-header {
   position: sticky;
-  top: 58px;
+  top: 78px;
   background-color: var(--bg-krem);
   padding: 0.35rem 0 0.75rem;
   z-index: 8;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .search-box {
@@ -369,8 +378,22 @@ body {
 .search-icon {
   position: absolute;
   left: 0.85rem;
-  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
   color: var(--text-muted);
+}
+
+.search-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.btn-icon-svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+  margin-right: 4px;
 }
 
 .search-input {
@@ -496,6 +519,12 @@ body {
 .badge-masuk {
   background-color: var(--hijau-soft);
   color: var(--warna-masuk);
+}
+
+.tx-badge-icon svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
 }
 
 .badge-patungan-info {
@@ -700,6 +729,12 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--hijau-tua);
+}
+
+.patungan-source-badge svg {
+  width: 12px;
+  height: 12px;
+  vertical-align: -2px;
 }
 
 /* Detail Hutang Header */
@@ -1250,6 +1285,12 @@ body {
   color: white;
   font-size: 1rem;
   font-weight: 800;
+}
+
+.fab-item-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .fab-icon-minus {
