@@ -135,7 +135,6 @@ const Finance = {
    * @param {Array<Object>} pembayaranList
    */
   hitungSemuaHutang(hutangList = [], pembayaranList = []) {
-    // Map pembayaran per hutang_id
     const bayarMap = new Map();
     for (let i = 0; i < pembayaranList.length; i++) {
       const p = pembayaranList[i];
@@ -149,7 +148,7 @@ const Finance = {
     let totalPiutangAktif = 0;
     let totalHutangAktif = 0;
     const hutangTerhitung = [];
-    const kontakSaldoMap = new Map(); // kontak_id -> { piutang: 0, hutang: 0 }
+    const kontakSaldoMap = new Map();
 
     for (let i = 0; i < hutangList.length; i++) {
       const h = hutangList[i];
@@ -167,7 +166,6 @@ const Finance = {
       };
       hutangTerhitung.push(item);
 
-      // Hitung total piutang/hutang aktif jika belum lunas
       if (calc.status !== 'LUNAS') {
         if (h.arah === 'PIUTANG') {
           totalPiutangAktif += calc.sisa;
@@ -175,7 +173,6 @@ const Finance = {
           totalHutangAktif += calc.sisa;
         }
 
-        // Akumulasi saldo bersih kontak
         if (h.kontak_id) {
           if (!kontakSaldoMap.has(h.kontak_id)) {
             kontakSaldoMap.set(h.kontak_id, { piutang: 0, hutang: 0 });
@@ -196,5 +193,28 @@ const Finance = {
       hutangTerhitung,
       kontakSaldoMap
     };
+  },
+
+  /**
+   * Algoritma Bagi Rata Integer Terkunci (§7.5 PRD)
+   * Membagi total integer rupiah secara adil tanpa ada desimal atau selisih rupiah.
+   * Sisa pembagian integer dibagikan +Rp1 ke pihak pertama secara berurutan.
+   * @param {number} total - Total pengeluaran bersama (integer)
+   * @param {number} jumlahPihak - Total orang yang berbagi (Saya + jumlah peserta)
+   * @returns {number[]} Array nominal integer sebesar jumlahPihak
+   */
+  bagiRataInteger(total, jumlahPihak) {
+    const t = Math.max(0, Math.floor(Number(total)) || 0);
+    const n = Math.max(1, Math.floor(Number(jumlahPihak)) || 1);
+    const base = Math.floor(t / n);
+    let sisa = t % n;
+
+    const hasil = [];
+    for (let i = 0; i < n; i++) {
+      const extra = sisa > 0 ? 1 : 0;
+      hasil.push(base + extra);
+      if (sisa > 0) sisa--;
+    }
+    return hasil;
   }
 };
