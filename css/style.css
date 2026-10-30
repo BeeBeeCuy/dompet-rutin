@@ -498,6 +498,11 @@ body {
   color: var(--warna-masuk);
 }
 
+.badge-patungan-info {
+  background-color: var(--hijau-soft);
+  color: var(--hijau-tua);
+}
+
 .badge-keluar {
   background-color: var(--terakota-soft);
   color: var(--warna-keluar);
@@ -1104,12 +1109,39 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   min-height: 44px;
+  position: relative;
 }
 
 .nav-icon {
-  font-size: 1.25rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 2px;
+}
+
+.nav-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.nav-item.active {
+  color: var(--hijau-tua);
+}
+
+.nav-item.active .nav-label {
+  font-weight: 800;
+}
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background-color: var(--hijau-tua);
 }
 
 .nav-label {
@@ -1141,9 +1173,14 @@ body {
 }
 
 .fab-main-btn {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
+  width: auto;
+  height: 50px;
+  padding: 0 1.15rem;
+  gap: 0.45rem;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
   background-color: var(--terakota);
   color: white;
   border: none;
@@ -1158,8 +1195,16 @@ body {
 }
 
 .fab-main-btn.open {
-  transform: rotate(45deg);
   background-color: #555555;
+}
+
+.fab-main-btn .fab-plus-svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.fab-main-btn.open .fab-plus-svg {
+  transform: rotate(45deg);
 }
 
 .fab-icon-plus {
