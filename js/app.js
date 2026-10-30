@@ -478,8 +478,14 @@ const App = {
       }
     }
 
-    // Transaksi Terakhir (Maks 4)
-    const listTerbaru = this.transaksiList.filter(t => !t.dibatalkan).slice(0, 4);
+    // Transaksi Terakhir (Maks 4) — termasuk baris tampilan patungan yang dibayar teman
+    const listTerbaru = this.transaksiList.filter(t => !t.dibatalkan)
+      .concat(this.buatBarisTampilanPatungan())
+      .sort((a, b) => {
+        const tgl = (b.tanggal || '').localeCompare(a.tanggal || '');
+        return tgl !== 0 ? tgl : (b.waktu || '').localeCompare(a.waktu || '');
+      })
+      .slice(0, 4);
     const containerTerbaru = document.getElementById('home-tx-terbaru-list');
     const emptyTerbaru = document.getElementById('home-empty-transaksi');
 
@@ -656,6 +662,26 @@ const App = {
       });
     }
 
+    if (this.activeFilterChip === 'SEMUA') {
+      let ekstra = this.buatBarisTampilanPatungan();
+      if (this.searchQuery) {
+        ekstra = ekstra.filter(item => {
+          const katObj = this.kategoriList.find(k => k.id === item.kategori_id);
+          const katNama = katObj ? katObj.nama.toLowerCase() : '';
+          return (item.nama || '').toLowerCase().includes(this.searchQuery)
+            || katNama.includes(this.searchQuery)
+            || 'patungan'.includes(this.searchQuery)
+            || (item._namaPembayar || '').toLowerCase().includes(this.searchQuery);
+        });
+      }
+      if (ekstra.length > 0) {
+        filtered = filtered.concat(ekstra).sort((a, b) => {
+          const tgl = (b.tanggal || '').localeCompare(a.tanggal || '');
+          return tgl !== 0 ? tgl : (b.waktu || '').localeCompare(a.waktu || '');
+        });
+      }
+    }
+
     if (filtered.length === 0) {
       listContainer.innerHTML = '';
       emptyBox.hidden = false;
@@ -706,6 +732,11 @@ const App = {
   },
 
   handleTxRowClick(txId) {
+    // Baris tampilan patungan (bukan transaksi kas): langsung ke Detail Patungan
+    if (typeof txId === 'string' && txId.startsWith('patungan-row-')) {
+      this.bukaDetailPatungan(txId.slice('patungan-row-'.length));
+      return;
+    }
     const tx = this.transaksiList.find(t => t.id === txId);
     if (!tx) return;
 
@@ -717,7 +748,53 @@ const App = {
     }
   },
 
+  buatBarisTampilanPatungan() {
+    // Patungan yang DIBAYAR TEMAN tidak melahirkan transaksi kas apa pun
+    // (Amendemen v1.2: kas tidak bergerak), jadi tanpa baris ini kejadiannya
+    // tidak terlihat di daftar transaksi. Baris tampilan ini murni visual,
+    // tidak masuk hitungan Finance mana pun.
+    return this.patunganList
+      .filter(p => !p.dibatalkan && p.dibayar_oleh && p.dibayar_oleh !== 'SAYA')
+      .map(p => {
+        const pembayar = this.kontakList.find(k => k.id === p.dibayar_oleh);
+        return {
+          id: 'patungan-row-' + p.id,
+          _patunganTampilan: true,
+          patungan_id: p.id,
+          tipe: 'PATUNGAN_TAMPILAN',
+          nama: p.nama,
+          nominal: p.bagian_saya,
+          kategori_id: p.kategori_id,
+          tanggal: p.tanggal,
+          waktu: p.waktu,
+          metode: p.metode,
+          dibuat_pada: p.dibuat_pada,
+          dibatalkan: false,
+          _namaPembayar: pembayar ? pembayar.nama : 'Teman'
+        };
+      });
+  },
+
   createTxRowHTML(item) {
+    if (item._patunganTampilan) {
+      const katObjP = this.kategoriList.find(k => k.id === item.kategori_id);
+      const katLabelP = katObjP ? katObjP.nama : 'Patungan';
+      return `
+      <div class="tx-row" data-id="${item.id}">
+        <div class="tx-row-left">
+          <div class="tx-badge-icon badge-patungan-info">\u{1F465}</div>
+          <div class="tx-info">
+            <div class="tx-nama">${item.nama} <span class="badge-patungan-tag">Patungan</span></div>
+            <div class="tx-meta">${katLabelP} \u00B7 ${item.waktu || ''} \u00B7 Dibayari ${item._namaPembayar}</div>
+          </div>
+        </div>
+        <div class="tx-row-right">
+          <div class="tx-nominal nominal-keluar">${Utils.formatRupiah(item.nominal)}</div>
+          <span class="tx-tipe-label">HUTANG SAYA</span>
+        </div>
+      </div>
+    `;
+    }
     const isMasuk = ['PEMASUKAN', 'PINJAM', 'TERIMA_PELUNASAN'].includes(item.tipe) || (item.tipe === 'SALDO_AWAL' && item.arah_saldo !== '-');
     const isSaldoAwal = item.tipe === 'SALDO_AWAL';
     const katObj = this.kategoriList.find(k => k.id === item.kategori_id);
