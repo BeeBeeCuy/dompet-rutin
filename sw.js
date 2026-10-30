@@ -1,14 +1,14 @@
 // sw.js
-// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 2 (v1.2.1: perbaikan integritas cache)
-const CACHE_NAME = 'dompet-rutin-v1.2.2-t2';
+// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 3: Pengeluaran Bersama (Patungan)
+const CACHE_NAME = 'dompet-rutin-v1.3.0-t3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/style.css?v=122',
-  './js/db.js?v=122',
-  './js/finance.js?v=122',
-  './js/app.js?v=122',
+  './css/style.css?v=130',
+  './js/db.js?v=130',
+  './js/finance.js?v=130',
+  './js/app.js?v=130',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
@@ -16,9 +16,18 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Paksa ambil dari jaringan (abaikan cache HTTP) agar cache versi baru
-      // tidak terisi salinan berkas versi lama.
-      return cache.addAll(ASSETS_TO_CACHE.map((url) => new Request(url, { cache: 'reload' })));
+      // Install dengan cache reload agar file baru tidak tertahan HTTP cache lokal
+      return Promise.all(
+        ASSETS_TO_CACHE.map((url) => {
+          return fetch(new Request(url, { cache: 'reload' }))
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`Gagal memuat aset untuk cache: ${url} (${response.status})`);
+              }
+              return cache.put(url, response);
+            });
+        })
+      );
     }).then(() => self.skipWaiting())
   );
 });

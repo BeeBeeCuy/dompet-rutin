@@ -7,7 +7,7 @@
   <meta name="description" content="Dompet Rutin - Pencatat Keuangan, Hutang Piutang & Patungan Offline">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23164229'><path d='M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>">
-  <link rel="stylesheet" href="css/style.css?v=122">
+  <link rel="stylesheet" href="css/style.css?v=130">
   <title>Dompet Rutin</title>
 </head>
 <body>
@@ -108,9 +108,8 @@
         </div>
       </section>
 
-      <!-- TAB 3: HUTANG & PIUTANG (PENUH TAHAP 2) -->
+      <!-- TAB 3: HUTANG & PIUTANG -->
       <section id="tab-hutang" class="tab-pane">
-        <!-- Dua Kartu Ringkasan -->
         <div class="grid-two-cards">
           <div class="card card-mini card-piutang">
             <div class="mini-label">Akan Diterima (Piutang)</div>
@@ -124,14 +123,13 @@
           </div>
         </div>
 
-        <!-- Tombol Akses Kelola Teman -->
         <div class="hutang-action-bar">
           <button type="button" class="btn btn-secondary btn-sm" id="btn-buka-daftar-teman">
             👥 Kelola Teman & Saldo Bersih
           </button>
         </div>
 
-        <!-- Seksi 1: Orang yang berhutang kepada saya (Piutang) -->
+        <!-- Seksi Piutang -->
         <div class="section-block" id="seksi-piutang-kontainer">
           <div class="section-title-row">
             <h2 class="section-title">Orang yang Berhutang kepada Saya</h2>
@@ -143,7 +141,7 @@
           </div>
         </div>
 
-        <!-- Seksi 2: Hutang saya kepada orang lain -->
+        <!-- Seksi Hutang Saya -->
         <div class="section-block" id="seksi-hutang-kontainer">
           <div class="section-title-row">
             <h2 class="section-title">Hutang Saya</h2>
@@ -155,7 +153,7 @@
           </div>
         </div>
 
-        <!-- Seksi 3: Arsip Hutang Sudah Lunas -->
+        <!-- Seksi Arsip Lunas -->
         <div class="section-block">
           <div class="section-title-row">
             <h2 class="section-title">Riwayat Sudah Lunas</h2>
@@ -189,9 +187,7 @@
     <!-- FAB Kontekstual -->
     <div class="fab-wrapper">
       <div class="fab-backdrop" id="fab-backdrop" hidden></div>
-      <div class="fab-menu" id="fab-menu" hidden>
-        <!-- Item FAB akan disesuaikan via JS sesuai tab aktif -->
-      </div>
+      <div class="fab-menu" id="fab-menu" hidden></div>
       <button type="button" class="fab-main-btn" id="btn-fab-main" aria-label="Tambah Baru">
         <span class="fab-icon-plus" id="fab-main-icon">+</span>
       </button>
@@ -233,7 +229,7 @@
 
         <form id="form-transaksi" class="modal-form" novalidate>
           <input type="hidden" id="form-tx-id">
-
+          
           <div class="type-toggle-row">
             <button type="button" class="type-toggle-btn active" id="btn-type-pengeluaran" data-tipe="PENGELUARAN">Pengeluaran (−)</button>
             <button type="button" class="type-toggle-btn" id="btn-type-pemasukan" data-tipe="PEMASUKAN">Pemasukan (+)</button>
@@ -250,14 +246,13 @@
           </div>
 
           <div class="form-group">
-            <label for="inp-tx-nama" class="form-label">Nama Transaksi</label>
-            <input type="text" id="inp-tx-nama" class="form-control" placeholder="Terisi otomatis dari kategori" maxlength="60">
-            <small class="form-hint">Otomatis sama dengan kategori terpilih — ubah bila ingin lebih spesifik, mis. "Gaji dari YouTube" atau "Mie instan".</small>
+            <label for="sel-tx-kategori" class="form-label">Kategori <span class="required">*</span></label>
+            <select id="sel-tx-kategori" class="form-control select-control" required></select>
           </div>
 
           <div class="form-group">
-            <label for="sel-tx-kategori" class="form-label">Kategori <span class="required">*</span></label>
-            <select id="sel-tx-kategori" class="form-control select-control" required></select>
+            <label for="inp-tx-nama" class="form-label">Nama Transaksi (Opsional)</label>
+            <input type="text" id="inp-tx-nama" class="form-control" placeholder="Kosongkan untuk memakai nama kategori" maxlength="60">
           </div>
 
           <div class="form-row-2">
@@ -327,7 +322,7 @@
       </div>
     </div>
 
-    <!-- 4. FORMULIR TAMBAH / UBAH HUTANG (§7.4 PRD) -->
+    <!-- 4. FORMULIR TAMBAH / UBAH HUTANG -->
     <div class="modal-overlay" id="modal-form-hutang" hidden>
       <div class="modal-sheet">
         <div class="modal-header-with-close">
@@ -338,7 +333,6 @@
         <form id="form-hutang" class="modal-form" novalidate>
           <input type="hidden" id="form-hutang-id">
 
-          <!-- Pemilih Arah Hutang -->
           <div class="type-toggle-row">
             <button type="button" class="type-toggle-btn active" id="btn-arah-piutang" data-arah="PIUTANG">Orang Berhutang ke Saya</button>
             <button type="button" class="type-toggle-btn" id="btn-arah-hutang" data-arah="HUTANG_SAYA">Saya Berhutang</button>
@@ -346,7 +340,6 @@
 
           <div class="form-alert-error" id="form-hutang-error" hidden></div>
 
-          <!-- Pemilih Kontak (§7.3 PRD) -->
           <div class="form-group" id="group-kontak-select">
             <div class="label-with-action">
               <label for="sel-hutang-kontak" class="form-label">Kontak Teman <span class="required">*</span></label>
@@ -355,7 +348,6 @@
             <select id="sel-hutang-kontak" class="form-control select-control" required></select>
           </div>
 
-          <!-- Nominal -->
           <div class="form-group">
             <label for="inp-hutang-nominal" class="form-label">Nominal <span class="required">*</span></label>
             <div class="input-prefix-wrapper">
@@ -365,19 +357,16 @@
             <small class="form-hint" id="hint-nominal-terkunci" hidden style="color:var(--terakota);">Nominal terkunci karena sudah ada riwayat pembayaran aktif.</small>
           </div>
 
-          <!-- Keperluan -->
-          <div class="form-group">
-            <label for="inp-hutang-keperluan" class="form-label">Keperluan / Untuk Apa <span class="required">*</span></label>
-            <input type="text" id="inp-hutang-keperluan" class="form-control" placeholder="Contoh: Talangan makan siang, beli bensin" required maxlength="60">
-          </div>
-
-          <!-- Kategori -->
           <div class="form-group">
             <label for="sel-hutang-kategori" class="form-label">Kategori</label>
             <select id="sel-hutang-kategori" class="form-control select-control"></select>
           </div>
 
-          <!-- Tanggal & Waktu -->
+          <div class="form-group">
+            <label for="inp-hutang-keperluan" class="form-label">Keperluan / Nama Transaksi (Opsional)</label>
+            <input type="text" id="inp-hutang-keperluan" class="form-control" placeholder="Kosongkan untuk memakai nama kategori" maxlength="60">
+          </div>
+
           <div class="form-row-2">
             <div class="form-group">
               <label for="inp-hutang-tanggal" class="form-label">Tanggal <span class="required">*</span></label>
@@ -389,13 +378,11 @@
             </div>
           </div>
 
-          <!-- Jatuh Tempo Opsional -->
           <div class="form-group">
             <label for="inp-hutang-tempo" class="form-label">Jatuh Tempo (Opsional)</label>
             <input type="date" id="inp-hutang-tempo" class="form-control">
           </div>
 
-          <!-- Metode Kas -->
           <div class="form-group" id="group-hutang-metode">
             <label class="form-label">Metode Uang Kas <span class="required">*</span></label>
             <div class="method-chip-group" id="group-chip-hutang-metode">
@@ -405,7 +392,6 @@
             </div>
           </div>
 
-          <!-- Saklar Opsi Tanpa Kas (§5 PRD) -->
           <div class="form-group checkbox-card" id="card-tanpa-kas">
             <label class="checkbox-label">
               <input type="checkbox" id="chk-hutang-tanpa-kas">
@@ -416,7 +402,6 @@
             </label>
           </div>
 
-          <!-- Catatan -->
           <div class="form-group">
             <label for="inp-hutang-catatan" class="form-label">Catatan Tambahan (Opsional)</label>
             <textarea id="inp-hutang-catatan" class="form-control textarea-control" rows="2" placeholder="Catatan opsional..."></textarea>
@@ -440,6 +425,12 @@
           <button type="button" class="btn-close-modal" id="btn-close-detail-hutang" aria-label="Tutup">✕</button>
         </div>
 
+        <!-- Tautan Patungan Asal (Bila ada) -->
+        <div id="det-hutang-patungan-link-box" hidden class="patungan-source-box">
+          <span class="patungan-source-badge">👥 Bersumber dari Patungan</span>
+          <button type="button" class="btn-text" id="btn-buka-patungan-dari-hutang">Lihat Rincian Patungan →</button>
+        </div>
+
         <div class="debt-main-numbers-box">
           <div class="debt-sisa-label">SISA HUTANG</div>
           <div class="debt-sisa-val" id="det-hutang-sisa">Rp0</div>
@@ -450,13 +441,11 @@
 
         <div class="detail-content" id="det-hutang-meta"></div>
 
-        <!-- Tombol Aksi Utama -->
         <div class="debt-primary-actions">
           <button type="button" class="btn btn-primary btn-block" id="btn-buka-catat-bayar">💵 Catat Pembayaran</button>
           <button type="button" class="btn btn-secondary btn-block" id="btn-salin-ringkasan-hutang">📋 Salin Ringkasan Tagihan</button>
         </div>
 
-        <!-- Daftar Riwayat Pembayaran -->
         <div class="section-block">
           <h3 class="section-title" style="margin-bottom:0.5rem;">Riwayat Pembayaran</h3>
           <div class="payment-history-list" id="det-hutang-riwayat-bayar"></div>
@@ -465,8 +454,7 @@
           </div>
         </div>
 
-        <!-- Tindakan Bahaya / Koreksi -->
-        <div class="detail-actions" style="margin-top:1.5rem;">
+        <div class="detail-actions" style="margin-top:1.5rem;" id="det-hutang-bottom-actions">
           <button type="button" class="btn btn-secondary" id="btn-hutang-edit">Ubah Data</button>
           <button type="button" class="btn btn-danger-soft" id="btn-hutang-void">Batalkan Hutang</button>
         </div>
@@ -566,7 +554,7 @@
       </div>
     </div>
 
-    <!-- 9. MODAL DAFTAR & KELOLA TEMAN (§7.3 PRD) -->
+    <!-- 9. MODAL DAFTAR & KELOLA TEMAN -->
     <div class="modal-overlay" id="modal-daftar-teman" hidden>
       <div class="modal-sheet">
         <div class="modal-header-with-close">
@@ -652,7 +640,178 @@
       </div>
     </div>
 
-    <!-- 12. MODAL SET BUDGET BULANAN -->
+    <!-- ==================== FITUR BARU TAHAP 3: PATUNGAN ==================== -->
+
+    <!-- 12. FORMULIR PENGELUARAN BERSAMA (PATUNGAN) -->
+    <div class="modal-overlay" id="modal-form-patungan" hidden>
+      <div class="modal-sheet">
+        <div class="modal-header-with-close">
+          <h2 class="modal-title">Pengeluaran Bersama (Patungan)</h2>
+          <button type="button" class="btn-close-modal" id="btn-close-form-patungan" aria-label="Tutup">✕</button>
+        </div>
+        <p class="modal-subtitle">Catat pengeluaran bareng teman. Piutang atau hutang akan otomatis terbit rapi.</p>
+
+        <form id="form-patungan" novalidate style="margin-top:0.75rem;">
+          <div class="form-alert-error" id="form-patungan-error" hidden></div>
+
+          <!-- Total Dibayar -->
+          <div class="form-group">
+            <label for="inp-patungan-total" class="form-label">Total Dibayar Keseluruhan <span class="required">*</span></label>
+            <div class="input-prefix-wrapper">
+              <span class="input-prefix">Rp</span>
+              <input type="text" inputmode="numeric" id="inp-patungan-total" class="form-control with-prefix" placeholder="0" required>
+            </div>
+          </div>
+
+          <!-- Kategori -->
+          <div class="form-group">
+            <label for="sel-patungan-kategori" class="form-label">Kategori <span class="required">*</span></label>
+            <select id="sel-patungan-kategori" class="form-control select-control" required></select>
+          </div>
+
+          <!-- Nama Transaksi Patungan -->
+          <div class="form-group">
+            <label for="inp-patungan-nama" class="form-label">Nama Transaksi (Opsional)</label>
+            <input type="text" id="inp-patungan-nama" class="form-control" placeholder="Kosongkan untuk memakai nama kategori" maxlength="60">
+          </div>
+
+          <!-- Yang Membayar -->
+          <div class="form-group">
+            <label class="form-label">Yang Membayar Total <span class="required">*</span></label>
+            <div class="payer-selector-box">
+              <select id="sel-patungan-pembayar" class="form-control select-control" required>
+                <option value="SAYA">Saya yang membayar duluan</option>
+                <!-- Peserta lain akan diisi otomatis sebagai opsi pembayar -->
+              </select>
+            </div>
+            <small class="form-hint" id="hint-pembayar-patungan">Uang kas Anda keluar sebesar total, bagian teman menjadi piutang.</small>
+          </div>
+
+          <!-- Tanggal & Waktu -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="inp-patungan-tanggal" class="form-label">Tanggal <span class="required">*</span></label>
+              <input type="date" id="inp-patungan-tanggal" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="inp-patungan-waktu" class="form-label">Waktu <span class="required">*</span></label>
+              <input type="time" id="inp-patungan-waktu" class="form-control" required>
+            </div>
+          </div>
+
+          <!-- Metode Pembayaran -->
+          <div class="form-group" id="group-patungan-metode">
+            <label class="form-label">Metode Pembayaran Kas <span class="required">*</span></label>
+            <div class="method-chip-group" id="group-chip-patungan-metode">
+              <button type="button" class="method-chip active" data-metode="Cash">Cash</button>
+              <button type="button" class="method-chip" data-metode="QRIS">QRIS</button>
+              <button type="button" class="method-chip" data-metode="Transfer">Transfer</button>
+            </div>
+          </div>
+
+          <!-- Bagian & Peserta Card Box -->
+          <div class="split-section-card">
+            <div class="split-section-header">
+              <h3 class="section-title">Pembagian Beban</h3>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-patungan-bagi-rata">⚖ Bagi Rata</button>
+            </div>
+
+            <!-- Bagian Saya -->
+            <div class="split-row-item split-row-saya">
+              <div class="split-person-label">
+                <strong>Bagian Saya</strong>
+                <small>Pengeluaran riil Anda</small>
+              </div>
+              <div class="input-prefix-wrapper split-amount-wrapper">
+                <span class="input-prefix">Rp</span>
+                <input type="text" inputmode="numeric" id="inp-patungan-bagian-saya" class="form-control with-prefix split-inp-nominal" placeholder="0">
+              </div>
+            </div>
+
+            <!-- Daftar Peserta Teman Dinamis -->
+            <div id="patungan-peserta-list" class="split-peserta-container"></div>
+
+            <div class="split-add-bar">
+              <button type="button" class="btn-text-action" id="btn-patungan-tambah-peserta">+ Tambah Teman</button>
+              <span class="form-hint" id="txt-patungan-count-peserta">0 peserta</span>
+            </div>
+
+            <!-- Bar Status Validasi Selisih -->
+            <div class="split-summary-bar" id="patungan-summary-bar">
+              <div class="summary-left">
+                <span class="summary-label">Total Terbagi:</span>
+                <strong class="summary-val" id="txt-patungan-total-terbagi">Rp0</strong>
+              </div>
+              <div class="summary-right">
+                <span class="status-pill status-belum" id="pill-patungan-status">Kurang Rp0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Catatan -->
+          <div class="form-group" style="margin-top:1rem;">
+            <label for="inp-patungan-catatan" class="form-label">Catatan (Opsional)</label>
+            <textarea id="inp-patungan-catatan" class="form-control textarea-control" rows="2" placeholder="Catatan tempat makan, rincian nota, dll..."></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary btn-block" id="btn-simpan-patungan" disabled>Simpan Patungan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 13. LEMBAR DETAIL PATUNGAN -->
+    <div class="modal-overlay" id="modal-detail-patungan" hidden>
+      <div class="modal-sheet">
+        <div class="modal-header-with-close">
+          <div>
+            <h2 class="modal-title" id="det-patungan-nama">Nama Patungan</h2>
+            <p class="modal-subtitle" id="det-patungan-meta-sub">-</p>
+          </div>
+          <button type="button" class="btn-close-modal" id="btn-close-detail-patungan" aria-label="Tutup">✕</button>
+        </div>
+
+        <div class="debt-main-numbers-box">
+          <div class="debt-sisa-label">TOTAL PENGELUARAN BERSAMA</div>
+          <div class="debt-sisa-val" id="det-patungan-total-val">Rp0</div>
+          <div class="debt-sub-calc" id="det-patungan-pembayar-val">Dibayar oleh: Saya</div>
+        </div>
+
+        <div class="section-block">
+          <h3 class="section-title" style="margin-bottom:0.6rem;">Rincian Pembagian Pihak</h3>
+          <div class="split-detail-list" id="det-patungan-breakdown-list"></div>
+        </div>
+
+        <div class="detail-content" id="det-patungan-extra-info" style="margin-top:1rem;"></div>
+
+        <div class="detail-actions" style="margin-top:1.5rem;">
+          <button type="button" class="btn btn-danger-soft btn-block" id="btn-patungan-void">Batalkan Patungan Ini</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 14. DIALOG BATALKAN PATUNGAN (VOID) -->
+    <div class="modal-overlay" id="modal-void-patungan" hidden>
+      <div class="modal-sheet modal-sheet-compact">
+        <div class="modal-header-with-close">
+          <h2 class="modal-title text-danger">Batalkan Patungan</h2>
+          <button type="button" class="btn-close-modal" id="btn-close-void-patungan" aria-label="Tutup">✕</button>
+        </div>
+        <p class="void-warning-text">Seluruh transaksi kas dan piutang/hutang yang lahir dari patungan ini akan dibatalkan secara bersamaan.</p>
+        <form id="form-void-patungan" novalidate>
+          <div class="form-group">
+            <label for="inp-void-patungan-alasan" class="form-label">Alasan Pembatalan <span class="required">*</span></label>
+            <input type="text" id="inp-void-patungan-alasan" class="form-control" placeholder="Contoh: Salah hitung total / transaksi dibatalkan" required maxlength="100">
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-danger btn-block">Ya, Batalkan Seluruh Patungan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 15. MODAL SET BUDGET BULANAN -->
     <div class="modal-overlay" id="modal-budget-setting" hidden>
       <div class="modal-sheet modal-sheet-compact">
         <div class="modal-header-with-close">
@@ -676,7 +835,7 @@
       </div>
     </div>
 
-    <!-- 13. MODAL PENYIAPAN PERTAMA -->
+    <!-- 16. MODAL PENYIAPAN PERTAMA -->
     <div class="modal-overlay" id="modal-onboarding" hidden>
       <div class="modal-sheet">
         <div class="modal-header">
@@ -707,8 +866,8 @@
     </div>
   </div>
 
-  <script src="js/db.js?v=122"></script>
-  <script src="js/finance.js?v=122"></script>
-  <script src="js/app.js?v=122"></script>
+  <script src="js/db.js?v=130"></script>
+  <script src="js/finance.js?v=130"></script>
+  <script src="js/app.js?v=130"></script>
 </body>
 </html>
