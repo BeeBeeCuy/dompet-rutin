@@ -82,10 +82,13 @@ const App = {
   pembayaranList: [],
   patunganList: [],
   patunganPesertaList: [],
+  kebutuhanList: [],
+  kebutuhanPeriodeList: [],
 
   // View state
   activeTab: 'tab-home',
   activeFilterChip: 'SEMUA',
+  activeKebutuhanFilter: 'SEMUA',
   searchQuery: '',
   showLunasSection: false,
 
@@ -96,6 +99,8 @@ const App = {
   selectedPaymentToVoid: null,
   selectedContactForDetail: null,
   selectedPatunganForDetail: null,
+  selectedPeriodeToFinish: null,
+  selectedMasterKebutuhanForDetail: null,
 
   async init() {
     try {
@@ -122,7 +127,13 @@ const App = {
       this.setupPatunganForm();
       this.setupDetailPatungan();
 
+      // Fitur Tahap 4: Kebutuhan Rutin & Periode
+      this.setupKebutuhanTabEvents();
+      this.setupKebutuhanForm();
+      this.setupSelesaikanKebutuhanModal();
+
       await this.checkFirstRun();
+      await this.catchUpKebutuhanPeriode();
       await this.refreshData();
 
     } catch (err) {
@@ -193,7 +204,7 @@ const App = {
   },
 
   async refreshData() {
-    const [txs, contacts, debts, payments, splits, splitParticipants] = await Promise.all([
+    const [txs, contacts, debts, payments, splits, splitParticipants, needs, needPeriods] = await Promise.all([
       withTransaction(['transaksi'], 'readonly', tx => {
         return new Promise(res => {
           const r = tx.objectStore('transaksi').getAll();
@@ -235,6 +246,20 @@ const App = {
           r.onsuccess = () => res(r.result || []);
           r.onerror = () => res([]);
         });
+      }),
+      withTransaction(['kebutuhan'], 'readonly', tx => {
+        return new Promise(res => {
+          const r = tx.objectStore('kebutuhan').getAll();
+          r.onsuccess = () => res(r.result || []);
+          r.onerror = () => res([]);
+        });
+      }),
+      withTransaction(['kebutuhan_periode'], 'readonly', tx => {
+        return new Promise(res => {
+          const r = tx.objectStore('kebutuhan_periode').getAll();
+          r.onsuccess = () => res(r.result || []);
+          r.onerror = () => res([]);
+        });
       })
     ]);
 
@@ -248,10 +273,13 @@ const App = {
     this.pembayaranList = payments;
     this.patunganList = splits.sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
     this.patunganPesertaList = splitParticipants;
+    this.kebutuhanList = needs;
+    this.kebutuhanPeriodeList = needPeriods;
 
     await this.renderHome();
     this.renderDaftarTransaksi();
     this.renderTabHutang();
+    this.renderTabKebutuhan();
     this.updateFABContext();
   },
 
@@ -267,6 +295,10 @@ const App = {
 
     document.getElementById('btn-lihat-semua-transaksi')?.addEventListener('click', () => {
       this.switchTab('tab-transaksi');
+    });
+
+    document.getElementById('btn-lihat-semua-kebutuhan')?.addEventListener('click', () => {
+      this.switchTab('tab-kebutuhan');
     });
 
     document.getElementById('btn-home-piutang')?.addEventListener('click', () => {
@@ -330,7 +362,20 @@ const App = {
     const fabMenu = document.getElementById('fab-menu');
     if (!fabMenu) return;
 
-    if (this.activeTab === 'tab-hutang') {
+    if (this.activeTab === 'tab-kebutuhan') {
+      fabMenu.innerHTML = `
+        <button type="button" class="fab-item-btn" id="fab-act-tambah-kebutuhan">
+          <span class="fab-item-label">Tambah Kebutuhan</span>
+          <span class="fab-item-icon fab-icon-kebutuhan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+        </button>
+      `;
+
+      document.getElementById('fab-act-tambah-kebutuhan')?.addEventListener('click', () => {
+        this.closeFAB();
+        this.bukaFormulirKebutuhan();
+      });
+
+    } else if (this.activeTab === 'tab-hutang') {
       fabMenu.innerHTML = `
         <button type="button" class="fab-item-btn" id="fab-act-split-hutang">
           <span class="fab-item-label">Pengeluaran Bersama</span>
@@ -486,6 +531,8 @@ const App = {
         return tgl !== 0 ? tgl : (b.waktu || '').localeCompare(a.waktu || '');
       })
       .slice(0, 4);
+    this.renderHomeKebutuhanTerdekat();
+
     const containerTerbaru = document.getElementById('home-tx-terbaru-list');
     const emptyTerbaru = document.getElementById('home-empty-transaksi');
 
@@ -921,13 +968,18 @@ const App = {
       </div>` : ''}
     `;
 
-    actions.hidden = !(isBebas && !tx.dibatalkan);
+    const bolehVoid = !tx.dibatalkan && (isBebas || tx.sumber === 'KEBUTUHAN');
+    const btnEditTx = document.getElementById('btn-detail-edit');
+    const btnVoidTx = document.getElementById('btn-detail-void');
+    if (btnEditTx) btnEditTx.hidden = !(isBebas && !tx.dibatalkan);
+    if (btnVoidTx) btnVoidTx.hidden = !bolehVoid;
+    actions.hidden = !bolehVoid;
     this.bukaModal('modal-detail-transaksi');
   },
 
   async eksekusiVoidTransaksi(id, alasan) {
     const nowIso = new Date().toISOString();
-    await withTransaction(['transaksi'], 'readwrite', (tx) => {
+    await withTransaction(['transaksi', 'kebutuhan_periode'], 'readwrite', (tx) => {
       const store = tx.objectStore('transaksi');
       const req = store.get(id);
       req.onsuccess = () => {
@@ -937,6 +989,28 @@ const App = {
         item.alasan_batal = alasan;
         item.diubah_pada = nowIso;
         store.put(item);
+
+        // Transaksi tertaut kebutuhan: membatalkan transaksi kas mengembalikan
+        // periode kebutuhan terkait ke status BELUM (PRD §7.6/§8).
+        if (item.kebutuhan_id && item.kebutuhan_periode) {
+          const storePeriode = tx.objectStore('kebutuhan_periode');
+          const reqCursor = storePeriode.openCursor();
+          reqCursor.onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor) {
+              const p = cursor.value;
+              if (p.transaksi_id === id) {
+                p.status = 'BELUM';
+                p.transaksi_id = null;
+                p.diselesaikan_pada = null;
+                p.nominal_aktual = null;
+                cursor.update(p);
+              } else {
+                cursor.continue();
+              }
+            }
+          };
+        }
       };
     });
   },
@@ -3054,6 +3128,834 @@ const App = {
       await this.refreshData();
     });
   }
+,
+
+  // ================= GENERATOR PERIODE KEBUTUHAN (PENGEJAR PERIODE §7.6) =================
+  /**
+   * Menerbitkan seluruh periode kebutuhan yang belum terbit hingga periode berjalan,
+   * termasuk mengejar periode terlewat bila aplikasi lama tidak dibuka (pengejar periode PRD §7.6).
+   * Bulanan: dari bulan periode terakhir tercatat (atau bulan pembuatan master) s.d. bulan berjalan.
+   * Mingguan: kunci periode = tanggal jatuh tempo pekan itu, dikejar per pekan.
+   * Sekali: satu periode berkunci tanggal jatuh tempo penuh.
+   */
+  async catchUpKebutuhanPeriode() {
+    const { tahunBulan, tanggal } = Utils.getWaktuJakarta();
+    const needs = await withTransaction(['kebutuhan'], 'readonly', tx => {
+      return new Promise(res => {
+        const r = tx.objectStore('kebutuhan').getAll();
+        r.onsuccess = () => res(r.result || []);
+        r.onerror = () => res([]);
+      });
+    });
+
+    const existingPeriods = await withTransaction(['kebutuhan_periode'], 'readonly', tx => {
+      return new Promise(res => {
+        const r = tx.objectStore('kebutuhan_periode').getAll();
+        r.onsuccess = () => res(r.result || []);
+        r.onerror = () => res([]);
+      });
+    });
+
+    const periodMap = new Set();
+    const lastPeriodeByMaster = {};
+    existingPeriods.forEach(p => {
+      periodMap.add(`${p.kebutuhan_id}_${p.periode}`);
+      if (!lastPeriodeByMaster[p.kebutuhan_id] || p.periode > lastPeriodeByMaster[p.kebutuhan_id]) {
+        lastPeriodeByMaster[p.kebutuhan_id] = p.periode;
+      }
+    });
+
+    const geserBulan = (ym, delta) => {
+      const parts = ym.split('-').map(Number);
+      const d = new Date(parts[0], parts[1] - 1 + delta, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+    const fmtTgl = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const buatPeriode = (k, periode, tglTempo) => ({
+      id: Utils.generateUUID(),
+      kebutuhan_id: k.id,
+      periode: periode,
+      tanggal_jatuh_tempo: tglTempo,
+      status: 'BELUM',
+      transaksi_id: null,
+      diselesaikan_pada: null,
+      nominal_aktual: null
+    });
+
+    const newPeriodsToInsert = [];
+
+    needs.forEach(k => {
+      if (!k.aktif) return;
+      const bulanDibuat = (k.dibuat_pada || '').slice(0, 7) || tahunBulan;
+      const tanggalDibuat = (k.dibuat_pada || '').slice(0, 10) || tanggal;
+
+      if (k.frekuensi === 'BULANAN') {
+        let ym = lastPeriodeByMaster[k.id] || bulanDibuat;
+        if (ym > tahunBulan) ym = tahunBulan;
+        while (ym <= tahunBulan) {
+          const key = `${k.id}_${ym}`;
+          if (!periodMap.has(key)) {
+            newPeriodsToInsert.push(buatPeriode(k, ym, Finance.hitungTanggalJatuhTempoBulanan(ym, k.jatuh_tempo)));
+            periodMap.add(key);
+          }
+          ym = geserBulan(ym, 1);
+        }
+      } else if (k.frekuensi === 'SEKALI') {
+        const key = `${k.id}_${k.jatuh_tempo}`;
+        if (!periodMap.has(key)) {
+          newPeriodsToInsert.push(buatPeriode(k, k.jatuh_tempo, k.jatuh_tempo));
+          periodMap.add(key);
+        }
+      } else if (k.frekuensi === 'MINGGUAN') {
+        // jatuh_tempo 1-7 (Senin=1 .. Minggu=7) -> hari JS (Senin=1 .. Sabtu=6, Minggu=0)
+        const targetJs = (parseInt(k.jatuh_tempo, 10) || 1) % 7;
+        const tparts = tanggal.split('-').map(Number);
+        const mundur = (new Date(tparts[0], tparts[1] - 1, tparts[2]).getDay() - targetJs + 7) % 7;
+        const due = new Date(tparts[0], tparts[1] - 1, tparts[2] - mundur);
+        const lastP = lastPeriodeByMaster[k.id] || null;
+        let iterasi = 0;
+        while (iterasi < 60) {
+          const keyPeriode = fmtTgl(due);
+          if (lastP && keyPeriode <= lastP) break;
+          if (keyPeriode < tanggalDibuat) break;
+          const key = `${k.id}_${keyPeriode}`;
+          if (!periodMap.has(key)) {
+            newPeriodsToInsert.push(buatPeriode(k, keyPeriode, keyPeriode));
+            periodMap.add(key);
+          }
+          due.setDate(due.getDate() - 7);
+          iterasi++;
+        }
+      }
+    });
+
+    if (newPeriodsToInsert.length > 0) {
+      await withTransaction(['kebutuhan_periode'], 'readwrite', tx => {
+        const store = tx.objectStore('kebutuhan_periode');
+        newPeriodsToInsert.forEach(p => store.add(p));
+      });
+    }
+  },
+
+// ================= HOME: KEBUTUHAN TERDEKAT =================
+  renderHomeKebutuhanTerdekat() {
+    const container = document.getElementById('home-kebutuhan-terdekat-list');
+    const emptyBox = document.getElementById('home-empty-kebutuhan');
+
+    // Ambil periode BELUM selesai (termasuk yang terlewat)
+    const activePeriods = this.kebutuhanPeriodeList.filter(p => p.status === 'BELUM');
+
+    // Gabungkan dengan info master kebutuhan
+    const enriched = [];
+    activePeriods.forEach(p => {
+      const master = this.kebutuhanList.find(k => k.id === p.kebutuhan_id);
+      if (master && master.aktif) {
+        enriched.push({
+          periode: p,
+          master: master
+});
+}
+});
+
+    // Urutkan berdasarkan tanggal jatuh tempo terdekat di atas
+    enriched.sort((a, b) => {
+      const tA = a.periode.tanggal_jatuh_tempo || '';
+      const tB = b.periode.tanggal_jatuh_tempo || '';
+      return tA.localeCompare(tB);
+});
+
+    const displayList = enriched.slice(0, 3);
+
+    if (displayList.length === 0) {
+      container.innerHTML = '';
+      emptyBox.hidden = false;
+} else {
+      emptyBox.hidden = true;
+      container.innerHTML = displayList.map(item => this.createKebutuhanCardHTML(item.periode, item.master, false)).join('');
+      this.attachKebutuhanCardEvents(container);
+}
+},
+
+// ================= TAB KEBUTUHAN PENUH (TAHAP 4) =================
+  setupKebutuhanTabEvents() {
+    const filterChips = document.querySelectorAll('#kebutuhan-filter-chips.filter-chip');
+    filterChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        filterChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        this.activeKebutuhanFilter = chip.getAttribute('data-filter');
+        this.renderTabKebutuhan();
+});
+});
+
+    // Detail Master Kebutuhan Close & Edit
+    document.getElementById('btn-close-detail-master')?.addEventListener('click', () => {
+      this.tutupModal('modal-detail-master-kebutuhan');
+});
+
+    document.getElementById('btn-master-edit')?.addEventListener('click', () => {
+      if (!this.selectedMasterKebutuhanForDetail) return;
+      this.tutupModal('modal-detail-master-kebutuhan');
+      this.bukaFormulirKebutuhan(this.selectedMasterKebutuhanForDetail);
+});
+
+    document.getElementById('btn-master-toggle-aktif')?.addEventListener('click', async () => {
+      if (!this.selectedMasterKebutuhanForDetail) return;
+      const m = this.selectedMasterKebutuhanForDetail;
+      const statusBaru =!m.aktif;
+      const pesan = statusBaru? `Aktifkan kembali kebutuhan "${m.nama}"?`: `Nonaktifkan kebutuhan "${m.nama}"? Kebutuhan ini akan berhenti menerbitkan periode baru.`;
+      if (confirm(pesan)) {
+        await withTransaction(['kebutuhan'], 'readwrite', tx => {
+          const store = tx.objectStore('kebutuhan');
+          const req = store.get(m.id);
+          req.onsuccess = () => {
+            const item = req.result;
+            if (item) {
+              item.aktif = statusBaru;
+              item.diubah_pada = new Date().toISOString();
+              store.put(item);
+}
+};
+});
+        this.tutupModal('modal-detail-master-kebutuhan');
+        await this.refreshData();
+}
+});
+},
+
+  renderTabKebutuhan() {
+    const { tahunBulan, tanggal} = Utils.getWaktuJakarta();
+    const seksiTerlewat = document.getElementById('seksi-kebutuhan-terlewat');
+    const listTerlewat = document.getElementById('list-kebutuhan-terlewat');
+    const badgeTerlewat = document.getElementById('badge-count-terlewat');
+    const seksiBulanIni = document.getElementById('seksi-kebutuhan-bulan-ini');
+    const listBulanIni = document.getElementById('list-kebutuhan-bulan-ini');
+    const emptyBulanIni = document.getElementById('empty-kebutuhan-bulan-ini');
+    const titleBulanIni = document.getElementById('title-kebutuhan-bulan-ini');
+    const seksiMaster = document.getElementById('seksi-master-kebutuhan');
+    const listMaster = document.getElementById('list-master-kebutuhan');
+
+    titleBulanIni.textContent = `Kebutuhan Periode ${Utils.formatBulanIndo(tahunBulan)}`;
+
+    if (this.activeKebutuhanFilter === 'MASTER') {
+      seksiTerlewat.hidden = true;
+      seksiBulanIni.hidden = true;
+      seksiMaster.hidden = false;
+
+      // Render daftar master
+      if (this.kebutuhanList.length === 0) {
+        listMaster.innerHTML = '<div class="empty-state-box"><p>Belum ada template kebutuhan.</p></div>';
+} else {
+        listMaster.innerHTML = this.kebutuhanList.map(m => {
+          const katObj = this.kategoriList.find(k => k.id === m.kategori_id);
+          return `
+            <div class="master-kebutuhan-card ${m.aktif? '': 'nonaktif'}" data-master-id="${m.id}">
+              <div>
+                <div style="font-weight:700; font-size:0.95rem;">${m.nama} ${!m.aktif? `<span class="status-pill status-belum" style="font-size:0.65rem;">Nonaktif</span>`: ''}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${m.jenis} · ${katObj? katObj.nama: 'Umum'} · ${m.frekuensi} (Tempo: ${m.jatuh_tempo})</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:800; font-size:1rem;">${Utils.formatRupiah(m.nominal)}</div>
+                <span class="badge-prioritas badge-${m.prioritas.toLowerCase().replace('_','')}">${m.prioritas}</span>
+              </div>
+            </div>
+          `;
+}).join('');
+
+        listMaster.querySelectorAll('.master-kebutuhan-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const mId = card.getAttribute('data-master-id');
+            this.bukaDetailMasterKebutuhan(mId);
+});
+});
+}
+
+      return;
+}
+
+    seksiMaster.hidden = true;
+    seksiBulanIni.hidden = false;
+
+    // 1. Kebutuhan Terlewat: periode lampau berstatus BELUM
+    const terlewatItems = [];
+    const bulanIniItems = [];
+
+    this.kebutuhanPeriodeList.forEach(p => {
+      const master = this.kebutuhanList.find(k => k.id === p.kebutuhan_id);
+      if (!master) return;
+
+      // Filter jenis bila chip bukan SEMUA
+      if (this.activeKebutuhanFilter!== 'SEMUA' && master.jenis!== this.activeKebutuhanFilter) {
+        return;
+}
+
+      const item = { periode: p, master: master};
+
+      // Cek apakah terlewat (periode sebelum bulan ini dan belum selesai)
+      const isPastMonth = p.periode < tahunBulan && p.status === 'BELUM';
+      if (isPastMonth) {
+        terlewatItems.push(item);
+} else if (p.periode === tahunBulan || p.status === 'BELUM' || p.tanggal_jatuh_tempo.startsWith(tahunBulan)) {
+        bulanIniItems.push(item);
+}
+});
+
+    // Render Terlewat
+    if (terlewatItems.length > 0) {
+      seksiTerlewat.hidden = false;
+      badgeTerlewat.textContent = terlewatItems.length;
+      listTerlewat.innerHTML = terlewatItems.map(it => this.createKebutuhanCardHTML(it.periode, it.master, true)).join('');
+      this.attachKebutuhanCardEvents(listTerlewat);
+} else {
+      seksiTerlewat.hidden = true;
+}
+
+    // Urutkan Bulan Ini: prioritas URGENT dulu, lalu tanggal jatuh tempo terdekat
+    const prioritasOrder = { 'URGENT': 1, 'PENTING': 2, 'BISA_DITUNDA': 3};
+    bulanIniItems.sort((a, b) => {
+      const pA = prioritasOrder[a.master.prioritas] || 4;
+      const pB = prioritasOrder[b.master.prioritas] || 4;
+      if (pA!== pB) return pA - pB;
+      return (a.periode.tanggal_jatuh_tempo || '').localeCompare(b.periode.tanggal_jatuh_tempo || '');
+});
+
+    if (bulanIniItems.length === 0) {
+      listBulanIni.innerHTML = '';
+      emptyBulanIni.hidden = false;
+} else {
+      emptyBulanIni.hidden = true;
+      listBulanIni.innerHTML = bulanIniItems.map(it => this.createKebutuhanCardHTML(it.periode, it.master, false)).join('');
+      this.attachKebutuhanCardEvents(listBulanIni);
+}
+},
+
+  createKebutuhanCardHTML(p, m, isTerlewat = false) {
+    const katObj = this.kategoriList.find(k => k.id === m.kategori_id);
+    const isSelesai = p.status === 'SELESAI';
+    const isDilewati = p.status === 'DILEWATI';
+
+    let statusPillClass = 'status-belum';
+    let statusLabel = m.jenis === 'TAGIHAN'? 'Belum Dibayar': 'Belum Dibeli';
+
+    if (isSelesai) {
+      statusPillClass = 'status-lunas';
+      statusLabel = m.jenis === 'TAGIHAN'? 'Sudah Dibayar': 'Sudah Dibeli';
+} else if (isDilewati) {
+      statusPillClass = 'status-dilewati';
+      statusLabel = 'Dilewati';
+} else if (isTerlewat) {
+      statusPillClass = 'status-melebihi';
+      statusLabel = 'Terlewat';
+}
+
+    let prioritasClass = 'badge-tunda';
+    if (m.prioritas === 'URGENT') prioritasClass = 'badge-urgent';
+    else if (m.prioritas === 'PENTING') prioritasClass = 'badge-penting';
+
+    const cardClass = isTerlewat? 'kebutuhan-card card-terlewat': 'kebutuhan-card';
+    const nominalTampil = (isSelesai && p.nominal_aktual)? p.nominal_aktual: m.nominal;
+
+    return `
+      <div class="${cardClass}" data-periode-id="${p.id}">
+        <div class="kebutuhan-card-header">
+          <div class="kebutuhan-card-info">
+            <div class="kebutuhan-title-row">
+              <span class="kebutuhan-name">${m.nama}</span>
+              <span class="badge-prioritas ${prioritasClass}">${m.prioritas}</span>
+              <span class="status-pill ${statusPillClass}" style="font-size:0.65rem;">${statusLabel}</span>
+            </div>
+            <div class="kebutuhan-meta-sub">
+              ${m.jenis} · ${katObj? katObj.nama: 'Umum'} · Tempo: ${Utils.formatTanggalIndo(p.tanggal_jatuh_tempo)}
+            </div>
+          </div>
+          <div class="kebutuhan-card-nominal">
+            <div class="kebutuhan-nominal-main">${Utils.formatRupiah(nominalTampil)}</div>
+            ${isSelesai && p.nominal_aktual!== m.nominal? `<div style="font-size:0.7rem; color:var(--text-muted);">Rencana: ${Utils.formatRupiah(m.nominal)}</div>`: ''}
+          </div>
+        </div>
+
+        ${!isSelesai &&!isDilewati? `
+        <div class="kebutuhan-card-actions">
+          ${m.frekuensi === 'BULANAN' ? `<button type="button" class="btn-kebutuhan-aksi btn-aksi-lewati" data-action="lewati" data-id="${p.id}">Lewati</button>` : ''}
+          <button type="button" class="btn-kebutuhan-aksi btn-aksi-selesai" data-action="selesai" data-id="${p.id}">
+            ✓ ${m.jenis === 'TAGIHAN'? 'Bayar Sekarang': 'Tandai Dibeli'}
+          </button>
+        </div>`: ''}
+      </div>
+    `;
+},
+
+  attachKebutuhanCardEvents(container) {
+    container.querySelectorAll('button[data-action="selesai"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pId = btn.getAttribute('data-id');
+        this.bukaModalSelesaikanKebutuhan(pId);
+});
+});
+
+    container.querySelectorAll('button[data-action="lewati"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const pId = btn.getAttribute('data-id');
+        if (confirm('Lewati periode kebutuhan ini tanpa transaksi kas?')) {
+          await this.eksekusiLewatiPeriode(pId);
+}
+});
+});
+},
+
+// ================= FORMULIR TAMBAH TEMPLATE KEBUTUHAN =================
+  setupKebutuhanForm() {
+    document.getElementById('btn-close-form-kebutuhan')?.addEventListener('click', () => {
+      this.tutupModal('modal-form-kebutuhan');
+});
+
+    const inpNominal = document.getElementById('inp-kebutuhan-nominal');
+    inpNominal?.addEventListener('input', (e) => {
+      const val = Utils.parseRupiah(e.target.value);
+      e.target.value = val > 0? val.toLocaleString('id-ID'): '';
+});
+
+    const selKategori = document.getElementById('sel-kebutuhan-kategori');
+    const inpNama = document.getElementById('inp-kebutuhan-nama');
+
+    selKategori?.addEventListener('change', () => {
+      if (inpNama.dataset.auto === 'true' ||!inpNama.value.trim()) {
+        const opt = selKategori.options[selKategori.selectedIndex];
+        inpNama.value = opt? opt.text: '';
+        inpNama.dataset.auto = 'true';
+}
+});
+
+    inpNama?.addEventListener('input', () => {
+      inpNama.dataset.auto = 'false';
+});
+
+    const btnTagihan = document.getElementById('btn-jenis-tagihan');
+    const btnBelanja = document.getElementById('btn-jenis-belanja');
+
+    btnTagihan?.addEventListener('click', () => {
+      btnTagihan.classList.add('active');
+      btnBelanja.classList.remove('active');
+});
+
+    btnBelanja?.addEventListener('click', () => {
+      btnBelanja.classList.add('active');
+      btnTagihan.classList.remove('active');
+});
+
+    // Priority chips
+    const priorityChips = document.querySelectorAll('#group-kebutuhan-prioritas.priority-chip');
+    priorityChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        priorityChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+});
+});
+
+    // Frekuensi select change listener
+    const selFrekuensi = document.getElementById('sel-kebutuhan-frekuensi');
+    const grpBulanan = document.getElementById('group-tempo-bulanan');
+    const grpMingguan = document.getElementById('group-tempo-mingguan');
+    const grpSekali = document.getElementById('group-tempo-sekali');
+
+    selFrekuensi?.addEventListener('change', () => {
+      const f = selFrekuensi.value;
+      grpBulanan.hidden = f!== 'BULANAN';
+      grpMingguan.hidden = f!== 'MINGGUAN';
+      grpSekali.hidden = f!== 'SEKALI';
+});
+
+    document.getElementById('form-kebutuhan')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.handleSaveKebutuhan();
+});
+},
+
+  populateKategoriKebutuhanSelect(selectedId = null) {
+    const sel = document.getElementById('sel-kebutuhan-kategori');
+    if (!sel) return;
+    const filtered = this.kategoriList.filter(k => (k.untuk === 'PENGELUARAN' || k.untuk === 'SEMUA') && k.aktif);
+    sel.innerHTML = filtered.map(k => {
+      const isSel = selectedId === k.id? 'selected': '';
+      return `<option value="${k.id}" ${isSel}>${k.nama}</option>`;
+}).join('');
+},
+
+  bukaFormulirKebutuhan(editMaster = null) {
+    const errBox = document.getElementById('form-kebutuhan-error');
+    errBox.hidden = true;
+
+    const inpId = document.getElementById('form-kebutuhan-id');
+    const inpNominal = document.getElementById('inp-kebutuhan-nominal');
+    const inpNama = document.getElementById('inp-kebutuhan-nama');
+    const selKategori = document.getElementById('sel-kebutuhan-kategori');
+    const selFrekuensi = document.getElementById('sel-kebutuhan-frekuensi');
+    const inpHari = document.getElementById('inp-kebutuhan-tempo-hari');
+    const selPekan = document.getElementById('sel-kebutuhan-tempo-pekan');
+    const inpTanggal = document.getElementById('inp-kebutuhan-tempo-tanggal');
+    const inpCatatan = document.getElementById('inp-kebutuhan-catatan');
+    const title = document.getElementById('form-kebutuhan-title');
+
+    const btnTagihan = document.getElementById('btn-jenis-tagihan');
+    const btnBelanja = document.getElementById('btn-jenis-belanja');
+
+    this.populateKategoriKebutuhanSelect(editMaster? editMaster.kategori_id: null);
+
+    if (editMaster) {
+      title.textContent = 'Ubah Kebutuhan Rutin';
+      inpId.value = editMaster.id;
+      inpNominal.value = editMaster.nominal.toLocaleString('id-ID');
+      inpNama.value = editMaster.nama;
+      inpNama.dataset.auto = 'false';
+      inpCatatan.value = editMaster.catatan || '';
+
+      const isTagihan = editMaster.jenis === 'TAGIHAN';
+      btnTagihan.classList.toggle('active', isTagihan);
+      btnBelanja.classList.toggle('active',!isTagihan);
+
+      // Prioritas
+      document.querySelectorAll('#group-kebutuhan-prioritas.priority-chip').forEach(c => {
+        c.classList.toggle('active', c.getAttribute('data-prioritas') === editMaster.prioritas);
+});
+
+      selFrekuensi.value = editMaster.frekuensi;
+      selFrekuensi.dispatchEvent(new Event('change'));
+
+      if (editMaster.frekuensi === 'BULANAN') {
+        inpHari.value = editMaster.jatuh_tempo;
+} else if (editMaster.frekuensi === 'MINGGUAN') {
+        selPekan.value = editMaster.jatuh_tempo;
+} else {
+        inpTanggal.value = editMaster.jatuh_tempo;
+}
+} else {
+      title.textContent = 'Tambah Kebutuhan Rutin';
+      inpId.value = '';
+      inpNominal.value = '';
+      inpCatatan.value = '';
+      inpHari.value = '1';
+      selPekan.value = '1';
+
+      const { tanggal} = Utils.getWaktuJakarta();
+      inpTanggal.value = tanggal;
+
+      btnTagihan.classList.add('active');
+      btnBelanja.classList.remove('active');
+
+      document.querySelectorAll('#group-kebutuhan-prioritas.priority-chip').forEach((c, idx) => {
+        c.classList.toggle('active', idx === 0);
+});
+
+      selFrekuensi.value = 'BULANAN';
+      selFrekuensi.dispatchEvent(new Event('change'));
+
+      const opt = selKategori.options[selKategori.selectedIndex];
+      inpNama.value = opt? opt.text: '';
+      inpNama.dataset.auto = 'true';
+}
+
+    this.bukaModal('modal-form-kebutuhan');
+    inpNominal.focus();
+},
+
+  async handleSaveKebutuhan() {
+    const errBox = document.getElementById('form-kebutuhan-error');
+    errBox.hidden = true;
+
+    const id = document.getElementById('form-kebutuhan-id').value.trim();
+    const isTagihan = document.getElementById('btn-jenis-tagihan').classList.contains('active');
+    const jenis = isTagihan? 'TAGIHAN': 'BELANJA';
+
+    const kategoriId = document.getElementById('sel-kebutuhan-kategori').value;
+    const selKatObj = this.kategoriList.find(k => k.id === kategoriId);
+    let nama = document.getElementById('inp-kebutuhan-nama').value.trim();
+    if (!nama) {
+      nama = selKatObj? selKatObj.nama: 'Kebutuhan';
+}
+
+    const nominal = Utils.parseRupiah(document.getElementById('inp-kebutuhan-nominal').value);
+    const activePriority = document.querySelector('#group-kebutuhan-prioritas.priority-chip.active');
+    const prioritas = activePriority? activePriority.getAttribute('data-prioritas'): 'PENTING';
+    const frekuensi = document.getElementById('sel-kebutuhan-frekuensi').value;
+    const catatan = document.getElementById('inp-kebutuhan-catatan').value.trim();
+
+    let jatuhTempo = null;
+    if (frekuensi === 'BULANAN') {
+      const h = parseInt(document.getElementById('inp-kebutuhan-tempo-hari').value, 10);
+      if (isNaN(h) || h < 1 || h > 31) {
+        errBox.textContent = 'Tanggal jatuh tempo bulanan harus antara 1 sampai 31.';
+        errBox.hidden = false;
+        return;
+}
+      jatuhTempo = h;
+} else if (frekuensi === 'MINGGUAN') {
+      jatuhTempo = parseInt(document.getElementById('sel-kebutuhan-tempo-pekan').value, 10);
+} else {
+      jatuhTempo = document.getElementById('inp-kebutuhan-tempo-tanggal').value;
+      if (!jatuhTempo) {
+        errBox.textContent = 'Tanggal jatuh tempo wajib diisi.';
+        errBox.hidden = false;
+        return;
+}
+}
+
+    if (nominal <= 0) {
+      errBox.textContent = 'Nominal rencana harus lebih dari 0.';
+      errBox.hidden = false;
+      return;
+}
+
+    const nowIso = new Date().toISOString();
+
+    if (id) {
+      await withTransaction(['kebutuhan'], 'readwrite', tx => {
+        const store = tx.objectStore('kebutuhan');
+        const req = store.get(id);
+        req.onsuccess = () => {
+          const item = req.result;
+          if (item) {
+            item.nama = nama;
+            item.kategori_id = kategoriId;
+            item.nominal = nominal;
+            item.jenis = jenis;
+            item.prioritas = prioritas;
+            item.frekuensi = frekuensi;
+            item.jatuh_tempo = jatuhTempo;
+            item.catatan = catatan;
+            item.diubah_pada = nowIso;
+            store.put(item);
+}
+};
+});
+} else {
+      const kebutuhanId = Utils.generateUUID();
+      const newMaster = {
+        id: kebutuhanId,
+        nama: nama,
+        kategori_id: kategoriId,
+        nominal: nominal,
+        jenis: jenis,
+        prioritas: prioritas,
+        frekuensi: frekuensi,
+        jatuh_tempo: jatuhTempo,
+        catatan: catatan,
+        aktif: true,
+        dibuat_pada: nowIso,
+        diubah_pada: nowIso
+};
+
+      await withTransaction(['kebutuhan'], 'readwrite', tx => {
+        tx.objectStore('kebutuhan').add(newMaster);
+});
+}
+
+    this.tutupModal('modal-form-kebutuhan');
+    await this.catchUpKebutuhanPeriode();
+    await this.refreshData();
+},
+
+  bukaDetailMasterKebutuhan(masterId) {
+    const m = this.kebutuhanList.find(k => k.id === masterId);
+    if (!m) return;
+    this.selectedMasterKebutuhanForDetail = m;
+
+    const katObj = this.kategoriList.find(k => k.id === m.kategori_id);
+    document.getElementById('det-master-kebutuhan-nama').textContent = m.nama;
+    document.getElementById('det-master-kebutuhan-sub').textContent = `${m.jenis} · ${m.frekuensi}`;
+
+    const content = document.getElementById('det-master-kebutuhan-content');
+    content.innerHTML = `
+      <div class="detail-row">
+        <span class="detail-label">Jenis</span>
+        <span class="detail-value">${m.jenis}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Nominal Rencana</span>
+        <span class="detail-value">${Utils.formatRupiah(m.nominal)}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Prioritas</span>
+        <span class="detail-value">${m.prioritas}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Kategori</span>
+        <span class="detail-value">${katObj? katObj.nama: 'Umum'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Jatuh Tempo</span>
+        <span class="detail-value">${m.frekuensi === 'BULANAN'? `Tiap tanggal ${m.jatuh_tempo}`: m.jatuh_tempo}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Status Template</span>
+        <span class="detail-value">${m.aktif? 'Aktif': 'Nonaktif'}</span>
+      </div>
+      ${m.catatan? `
+      <div class="detail-row">
+        <span class="detail-label">Catatan</span>
+        <span class="detail-value">${m.catatan}</span>
+      </div>`: ''}
+    `;
+
+    const btnToggle = document.getElementById('btn-master-toggle-aktif');
+    btnToggle.textContent = m.aktif? 'Nonaktifkan Kebutuhan': 'Aktifkan Kembali';
+
+    this.bukaModal('modal-detail-master-kebutuhan');
+},
+
+// ================= TANDAI SELESAI / LEWATI PERIODE KEBUTUHAN =================
+  setupSelesaikanKebutuhanModal() {
+    document.getElementById('btn-close-selesaikan')?.addEventListener('click', () => {
+      this.tutupModal('modal-selesaikan-kebutuhan');
+});
+
+    const inpNominal = document.getElementById('inp-selesai-nominal-aktual');
+    inpNominal?.addEventListener('input', (e) => {
+      const val = Utils.parseRupiah(e.target.value);
+      e.target.value = val > 0? val.toLocaleString('id-ID'): '';
+});
+
+    const methodChips = document.querySelectorAll('#group-chip-selesai-metode.method-chip');
+    methodChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        methodChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+});
+});
+
+    document.getElementById('form-selesaikan-kebutuhan')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.handleKonfirmasiSelesai();
+});
+},
+
+  bukaModalSelesaikanKebutuhan(periodeId) {
+    const p = this.kebutuhanPeriodeList.find(item => item.id === periodeId);
+    if (!p) return;
+    const m = this.kebutuhanList.find(item => item.id === p.kebutuhan_id);
+    if (!m) return;
+
+    this.selectedPeriodeToFinish = { periode: p, master: m};
+    const errBox = document.getElementById('form-selesai-error');
+    errBox.hidden = true;
+
+    document.getElementById('form-selesai-periode-id').value = p.id;
+    document.getElementById('title-selesaikan-kebutuhan').textContent =
+      m.jenis === 'TAGIHAN'? 'Bayar Tagihan': 'Tandai Selesai Belanja';
+    document.getElementById('sub-selesaikan-kebutuhan').textContent =
+      `${m.nama} · Periode ${p.periode}`;
+
+    const inpNominal = document.getElementById('inp-selesai-nominal-aktual');
+    inpNominal.value = m.nominal.toLocaleString('id-ID'); // Terisi default nominal rencana (§7.6 PRD)
+
+    const { tanggal, waktu} = Utils.getWaktuJakarta();
+    document.getElementById('inp-selesai-tanggal').value = tanggal;
+    document.getElementById('inp-selesai-waktu').value = waktu;
+    document.getElementById('inp-selesai-catatan').value = '';
+
+    document.querySelectorAll('#group-chip-selesai-metode.method-chip').forEach((c, idx) => {
+      c.classList.toggle('active', idx === 0);
+});
+
+    this.bukaModal('modal-selesaikan-kebutuhan');
+    inpNominal.focus();
+},
+
+  async handleKonfirmasiSelesai() {
+    const errBox = document.getElementById('form-selesai-error');
+    errBox.hidden = true;
+
+    const { periode, master} = this.selectedPeriodeToFinish;
+    const nominalAktual = Utils.parseRupiah(document.getElementById('inp-selesai-nominal-aktual').value);
+    const tanggalBayar = document.getElementById('inp-selesai-tanggal').value;
+    const waktuBayar = document.getElementById('inp-selesai-waktu').value;
+    const catatan = document.getElementById('inp-selesai-catatan').value.trim();
+
+    const activeChip = document.querySelector('#group-chip-selesai-metode.method-chip.active');
+    const metode = activeChip? activeChip.getAttribute('data-metode'): 'Cash';
+
+    if (nominalAktual <= 0) {
+      errBox.textContent = 'Nominal pembayaran riil harus lebih dari 0.';
+      errBox.hidden = false;
+      return;
+}
+
+    if (!tanggalBayar ||!waktuBayar) {
+      errBox.textContent = 'Tanggal dan waktu pembayaran wajib diisi.';
+      errBox.hidden = false;
+      return;
+}
+
+    const nowIso = new Date().toISOString();
+    const txId = Utils.generateUUID();
+
+    // Sesuai PRD §5 & §7.6:
+    // Menulis satu PENGELUARAN tertaut ke periode ini sebesar nominal AKTUAL.
+    // Menyelesaikan periode terlewat menulis transaksi bertanggal penyelesaian pada bulan berjalan (bukan mengubah bulan lalu).
+    const newTx = {
+      id: txId,
+      tipe: 'PENGELUARAN',
+      nominal: nominalAktual,
+      arah_saldo: '-',
+      nama: master.nama,
+      kategori_id: master.kategori_id,
+      tanggal: tanggalBayar,
+      waktu: waktuBayar,
+      metode: metode,
+      catatan: catatan? `Kebutuhan (${periode.periode}): ${catatan}`: `Kebutuhan periode ${periode.periode}`,
+      kontak_id: null,
+      hutang_id: null,
+      patungan_id: null,
+      kebutuhan_id: master.id,
+      kebutuhan_periode: periode.periode,
+      sumber: 'KEBUTUHAN',
+      dibatalkan: false,
+      alasan_batal: null,
+      dibuat_pada: nowIso,
+      diubah_pada: nowIso
+};
+
+    await withTransaction(['kebutuhan_periode', 'transaksi'], 'readwrite', tx => {
+      // 1. Simpan Transaksi Kas Pengeluaran
+      tx.objectStore('transaksi').add(newTx);
+
+      // 2. Kunci Periode Menjadi SELESAI
+      const storePeriode = tx.objectStore('kebutuhan_periode');
+      const reqP = storePeriode.get(periode.id);
+      reqP.onsuccess = () => {
+        const itemP = reqP.result;
+        if (itemP) {
+          itemP.status = 'SELESAI';
+          itemP.transaksi_id = txId;
+          itemP.nominal_aktual = nominalAktual;
+          itemP.diselesaikan_pada = nowIso;
+          storePeriode.put(itemP);
+}
+};
+});
+
+    this.tutupModal('modal-selesaikan-kebutuhan');
+    await this.refreshData();
+},
+
+  async eksekusiLewatiPeriode(periodeId) {
+    await withTransaction(['kebutuhan_periode'], 'readwrite', tx => {
+      const store = tx.objectStore('kebutuhan_periode');
+      const req = store.get(periodeId);
+      req.onsuccess = () => {
+        const p = req.result;
+        if (p) {
+          p.status = 'DILEWATI';
+          p.transaksi_id = null;
+          p.nominal_aktual = 0;
+          p.diselesaikan_pada = new Date().toISOString();
+          store.put(p);
+}
+};
+});
+    await this.refreshData();
+},
 };
 
 document.addEventListener('DOMContentLoaded', () => {
