@@ -216,5 +216,26 @@ const Finance = {
       if (sisa > 0) sisa--;
     }
     return hasil;
+  },
+
+  /**
+   * Menghitung tanggal jatuh tempo sebenarnya untuk kebutuhan Bulanan.
+   * Menangani aturan hari ke-31 di bulan pendek atau Februari (kabisat/non-kabisat)
+   * @param {string} tahunBulan - 'YYYY-MM'
+   * @param {number} targetHari - Hari 1 s.d 31
+   * @returns {string} Tanggal format 'YYYY-MM-DD'
+   */
+  hitungTanggalJatuhTempoBulanan(tahunBulan, targetHari) {
+    const parts = tahunBulan.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10); // 1-12
+  
+    // Hari terakhir dalam bulan yang bersangkutan
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const actualDay = Math.min(Math.max(1, parseInt(targetHari, 10) || 1), daysInMonth);
+  
+    const strDay = String(actualDay).padStart(2, '0');
+    const strMonth = String(month).padStart(2, '0');
+    return `${year}-${strMonth}-${strDay}`;
   }
 };
