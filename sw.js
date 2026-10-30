@@ -1,14 +1,14 @@
 // sw.js
-// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 2
-const CACHE_NAME = 'dompet-rutin-v1.2.0-t2';
+// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 2 (v1.2.1: perbaikan integritas cache)
+const CACHE_NAME = 'dompet-rutin-v1.2.1-t2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/style.css',
-  './js/db.js',
-  './js/finance.js',
-  './js/app.js',
+  './css/style.css?v=121',
+  './js/db.js?v=121',
+  './js/finance.js?v=121',
+  './js/app.js?v=121',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
@@ -16,7 +16,9 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Paksa ambil dari jaringan (abaikan cache HTTP) agar cache versi baru
+      // tidak terisi salinan berkas versi lama.
+      return cache.addAll(ASSETS_TO_CACHE.map((url) => new Request(url, { cache: 'reload' })));
     }).then(() => self.skipWaiting())
   );
 });
