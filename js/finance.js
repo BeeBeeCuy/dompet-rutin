@@ -1,6 +1,6 @@
 // js/finance.js
 // Modul Perhitungan Pusat Kanonik Dompet Rutin v1.1 (§3.10 PRD)
-// Satu-satunya lapisan perhitungan untuk Saldo Kas, Ringkasan Bulan, dan Budget.
+// Satu-satunya lapisan perhitungan untuk Saldo Kas, Ringkasan Bulan, Budget, dan Hutang Piutang.
 
 const Finance = {
   /**
@@ -50,8 +50,8 @@ const Finance = {
    * Menghitung Ringkasan Konsumsi & Pendapatan Bulan Berjalan (§5 PRD)
    * Hanya tipe PEMASUKAN dan PENGELUARAN yang masuk ringkasan ekonomi & budget.
    * @param {Array<Object>} transaksiList - Seluruh catatan transaksi
-   * @param {string} tahunBulan - Format 'YYYY-MM' (berdasarkan tanggal lokal Asia/Jakarta)
-   * @param {number} budgetBulanan - Angka budget dari pengaturan (integer)
+   * @param {string} tahunBulan - Format 'YYYY-MM'
+   * @param {number} budgetBulanan - Angka budget dari pengaturan
    */
   hitungRingkasanBulan(transaksiList, tahunBulan, budgetBulanan = 0) {
     let pemasukanBulan = 0;
@@ -76,13 +76,12 @@ const Finance = {
     const budgetDiatur = budget > 0;
     let persenBudget = 0;
     let sisaBudget = 0;
-    let statusBudget = 'BELUM_DIATUR'; // 'BELUM_DIATUR' | 'AMAN' | 'WASPADA' | 'MELEBIHI'
+    let statusBudget = 'BELUM_DIATUR';
 
     if (budgetDiatur) {
       persenBudget = (pengeluaranBulan / budget) * 100;
       sisaBudget = budget - pengeluaranBulan;
 
-      // Status Ambang PRD: AMAN < 75%, WASPADA 75–100%, MELEBIHI > 100%
       if (persenBudget < 75) {
         statusBudget = 'AMAN';
       } else if (persenBudget <= 100) {
@@ -104,21 +103,98 @@ const Finance = {
   },
 
   /**
-   * Menghitung saldo satu hutang dari nominal awal dikurangi pembayaran aktif
-   * @param {number} nominalAwal 
-   * @param {Array<Object>} pembayaranListAktif 
+   * Menghitung saldo dan status satu hutang dari riwayat pembayaran aktif
+   * @param {number} nominalAwal
+   * @param {Array<Object>} pembayaranListAktif
    */
-  hitungSaldoHutang(nominalAwal, pembayaranListAktif) {
-    const terbayar = (pembayaranListAktif || []).reduce((acc, p) => {
-      return !p.dibatalkan ? acc + (Math.round(Number(p.nominal)) || 0) : acc;
-    }, 0);
-    const sisa = Math.max(0, nominalAwal - terbayar);
+  hitungSaldoHutang(nominalAwal, pembayaranListAktif = []) {
+    const awal = Math.max(0, Math.round(Number(nominalAwal)) || 0);
+    let terbayar = 0;
+
+    for (let i = 0; i < pembayaranListAktif.length; i++) {
+      const p = pembayaranListAktif[i];
+      if (!p.dibatalkan) {
+        terbayar += Math.round(Number(p.nominal)) || 0;
+      }
+    }
+
+    const sisa = Math.max(0, awal - terbayar);
     let status = 'BELUM_DIBAYAR';
-    if (terbayar >= nominalAwal) {
+    if (terbayar >= awal && awal > 0) {
       status = 'LUNAS';
     } else if (terbayar > 0) {
       status = 'SEBAGIAN';
     }
-    return { terbayar, sisa, status };
+
+    return { awal, terbayar, sisa, status };
+  },
+
+  /**
+   * Menghitung metrik lengkap seluruh hutang & piutang aktif serta saldo bersih kontak (§7.3, §7.4 PRD)
+   * @param {Array<Object>} hutangList
+   * @param {Array<Object>} pembayaranList
+   */
+  hitungSemuaHutang(hutangList = [], pembayaranList = []) {
+    // Map pembayaran per hutang_id
+    const bayarMap = new Map();
+    for (let i = 0; i < pembayaranList.length; i++) {
+      const p = pembayaranList[i];
+      if (p.dibatalkan) continue;
+      if (!bayarMap.has(p.hutang_id)) {
+        bayarMap.set(p.hutang_id, []);
+      }
+      bayarMap.get(p.hutang_id).push(p);
+    }
+
+    let totalPiutangAktif = 0;
+    let totalHutangAktif = 0;
+    const hutangTerhitung = [];
+    const kontakSaldoMap = new Map(); // kontak_id -> { piutang: 0, hutang: 0 }
+
+    for (let i = 0; i < hutangList.length; i++) {
+      const h = hutangList[i];
+      if (h.dibatalkan) continue;
+
+      const daftarBayar = bayarMap.get(h.id) || [];
+      const calc = this.hitungSaldoHutang(h.nominal_awal, daftarBayar);
+
+      const item = {
+        ...h,
+        terbayar: calc.terbayar,
+        sisa: calc.sisa,
+        status: calc.status,
+        jumlah_pembayaran_aktif: daftarBayar.length
+      };
+      hutangTerhitung.push(item);
+
+      // Hitung total piutang/hutang aktif jika belum lunas
+      if (calc.status !== 'LUNAS') {
+        if (h.arah === 'PIUTANG') {
+          totalPiutangAktif += calc.sisa;
+        } else if (h.arah === 'HUTANG_SAYA') {
+          totalHutangAktif += calc.sisa;
+        }
+
+        // Akumulasi saldo bersih kontak
+        if (h.kontak_id) {
+          if (!kontakSaldoMap.has(h.kontak_id)) {
+            kontakSaldoMap.set(h.kontak_id, { piutang: 0, hutang: 0 });
+          }
+          const saldoK = kontakSaldoMap.get(h.kontak_id);
+          if (h.arah === 'PIUTANG') {
+            saldoK.piutang += calc.sisa;
+          } else {
+            saldoK.hutang += calc.sisa;
+          }
+        }
+      }
+    }
+
+    return {
+      totalPiutangAktif,
+      totalHutangAktif,
+      hutangTerhitung,
+      kontakSaldoMap
+    };
   }
 };
