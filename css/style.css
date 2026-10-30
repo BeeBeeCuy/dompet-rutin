@@ -1047,6 +1047,17 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  /* v1.2.2: judul & tombol X menempel di atas saat isi modal di-scroll */
+  position: sticky;
+  top: -1.25rem;
+  margin-top: -1.25rem;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  padding: 1rem 1.25rem 0.75rem;
+  background: var(--bg-card);
+  z-index: 20;
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
 }
 
 .modal-title {
