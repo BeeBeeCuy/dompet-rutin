@@ -1,6 +1,6 @@
 // sw.js
 // Service Worker Kanonik Dompet Rutin v1.1 - Tahap 3: Pengeluaran Bersama (Patungan) + perbaikan tampilan v1.3.2
-const CACHE_NAME = 'dompet-rutin-v1.3.2-t3';
+const CACHE_NAME = 'dompet-rutin-v1.4.0-t4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
