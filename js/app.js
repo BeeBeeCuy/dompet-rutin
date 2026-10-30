@@ -334,15 +334,15 @@ const App = {
       fabMenu.innerHTML = `
         <button type="button" class="fab-item-btn" id="fab-act-split-hutang">
           <span class="fab-item-label">Pengeluaran Bersama</span>
-          <span class="fab-item-icon fab-icon-split">👥</span>
+          <span class="fab-item-icon fab-icon-split"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         </button>
         <button type="button" class="fab-item-btn" id="fab-act-tambah-hutang">
           <span class="fab-item-label">Catat Hutang / Piutang</span>
-          <span class="fab-item-icon fab-icon-plus">✎</span>
+          <span class="fab-item-icon fab-icon-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span>
         </button>
         <button type="button" class="fab-item-btn" id="fab-act-tambah-teman">
           <span class="fab-item-label">Tambah Teman Baru</span>
-          <span class="fab-item-icon fab-icon-plus">👤</span>
+          <span class="fab-item-icon fab-icon-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></span>
         </button>
       `;
 
@@ -366,15 +366,15 @@ const App = {
       fabMenu.innerHTML = `
         <button type="button" class="fab-item-btn" id="fab-act-split">
           <span class="fab-item-label">Pengeluaran Bersama</span>
-          <span class="fab-item-icon fab-icon-split">👥</span>
+          <span class="fab-item-icon fab-icon-split"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         </button>
         <button type="button" class="fab-item-btn" id="fab-act-pengeluaran">
           <span class="fab-item-label">Pengeluaran</span>
-          <span class="fab-item-icon fab-icon-minus">−</span>
+          <span class="fab-item-icon fab-icon-minus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
         </button>
         <button type="button" class="fab-item-btn" id="fab-act-pemasukan">
           <span class="fab-item-label">Pemasukan</span>
-          <span class="fab-item-icon fab-icon-plus">+</span>
+          <span class="fab-item-icon fab-icon-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
         </button>
       `;
 
@@ -782,7 +782,7 @@ const App = {
       return `
       <div class="tx-row" data-id="${item.id}">
         <div class="tx-row-left">
-          <div class="tx-badge-icon badge-patungan-info">\u{1F465}</div>
+          <div class="tx-badge-icon badge-patungan-info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
           <div class="tx-info">
             <div class="tx-nama">${item.nama} <span class="badge-patungan-tag">Patungan</span></div>
             <div class="tx-meta">${katLabelP} \u00B7 ${item.waktu || ''} \u00B7 Dibayari ${item._namaPembayar}</div>
@@ -807,7 +807,7 @@ const App = {
 
     if (isSaldoAwal) {
       badgeClass = 'badge-saldo-awal';
-      iconChar = '⚙';
+      iconChar = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
       signChar = item.arah_saldo === '-' ? '−' : '+';
       nominalClass = 'nominal-netral';
     }
@@ -1653,7 +1653,7 @@ const App = {
       btnBayar.textContent = '✓ Hutang Sudah Lunas';
     } else {
       btnBayar.disabled = false;
-      btnBayar.textContent = '💵 Catat Pembayaran';
+      btnBayar.innerHTML = '<svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg> Catat Pembayaran';
     }
 
     const payments = this.pembayaranList.filter(p => p.hutang_id === h.id);
