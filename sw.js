@@ -1,6 +1,6 @@
 // sw.js
-// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 1
-const CACHE_NAME = 'dompet-rutin-v1.1.3-t1';
+// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 2
+const CACHE_NAME = 'dompet-rutin-v1.2.0-t2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
