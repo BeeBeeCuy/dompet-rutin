@@ -7,7 +7,7 @@
   <meta name="description" content="Dompet Rutin - Pencatat Keuangan, Hutang Piutang & Patungan Offline">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23164229'><path d='M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>">
-  <link rel="stylesheet" href="css/style.css?v=132">
+  <link rel="stylesheet" href="css/style.css?v=140">
   <title>Dompet Rutin</title>
 </head>
 <body>
@@ -69,8 +69,9 @@
             <h2 class="section-title">Kebutuhan Terdekat</h2>
             <button type="button" class="btn-text" id="btn-lihat-semua-kebutuhan">Lihat Semua</button>
           </div>
-          <div class="empty-state-box">
-            <p>Belum ada tagihan atau belanja terdekat.</p>
+          <div class="kebutuhan-card-list" id="home-kebutuhan-terdekat-list"></div>
+          <div class="empty-state-box" id="home-empty-kebutuhan">
+            <p>Tidak ada tagihan atau belanja terdekat bulan ini.</p>
           </div>
         </div>
 
@@ -164,12 +165,38 @@
       </section>
 
       <!-- TAB 4: KEBUTUHAN (Tahap 4) -->
-      <section id="tab-kebutuhan" class="tab-pane">
-        <div class="placeholder-pane">
-          <h2>Kebutuhan Rutin</h2>
-          <p class="text-muted">Akan aktif penuh pada Tahap 4.</p>
-        </div>
-      </section>
+<section id="tab-kebutuhan" class="tab-pane">
+<!-- Filter Kebutuhan -->
+<div class="kebutuhan-filter-row">
+<div class="chip-filter-row" id="kebutuhan-filter-chips">
+<button type="button" class="filter-chip active" data-filter="SEMUA">Semua Kebutuhan</button>
+<button type="button" class="filter-chip" data-filter="TAGIHAN">Tagihan</button>
+<button type="button" class="filter-chip" data-filter="BELANJA">Belanja Rutin</button>
+<button type="button" class="filter-chip" data-filter="MASTER">Master Aturan</button>
+</div>
+</div>
+<!-- Seksi 1: Kebutuhan Terlewat (Catch-up / Periode Belum Selesai Bulan Lalu) -->
+<div class="section-block section-terlewat-block" id="seksi-kebutuhan-terlewat" hidden>
+<div class="section-title-row">
+<h2 class="section-title text-danger">⚠ Periode Terlewat</h2>
+<span class="count-badge count-badge-danger" id="badge-count-terlewat">0</span>
+</div>
+<div class="kebutuhan-card-list" id="list-kebutuhan-terlewat"></div>
+</div>
+<!-- Seksi 2: Periode Bulan Berjalan -->
+<div class="section-block" id="seksi-kebutuhan-bulan-ini">
+<h2 class="section-title" id="title-kebutuhan-bulan-ini">Kebutuhan Bulan Ini</h2>
+<div class="kebutuhan-card-list" id="list-kebutuhan-bulan-ini"></div>
+<div class="empty-state-box" id="empty-kebutuhan-bulan-ini">
+<p>Belum ada kebutuhan rutin tercatat. Tambahkan melalui tombol + di bawah.</p>
+</div>
+</div>
+<!-- Seksi 3: Master Aturan Kebutuhan (Dapat dibuka via chip filter 'MASTER') -->
+<div class="section-block" id="seksi-master-kebutuhan" hidden>
+<h2 class="section-title">Master Template Kebutuhan</h2>
+<div class="master-kebutuhan-list" id="list-master-kebutuhan"></div>
+</div>
+</section>
 
       <!-- TAB 5: PROFIL -->
       <section id="tab-profil" class="tab-pane">
@@ -812,6 +839,153 @@
       </div>
     </div>
 
+    <!-- 15. FORMULIR TAMBAH / UBAH TEMPLATE KEBUTUHAN (§7.6 PRD) -->
+<div class="modal-overlay" id="modal-form-kebutuhan" hidden>
+<div class="modal-sheet">
+<div class="modal-header-with-close">
+<div>
+<h2 class="modal-title" id="form-kebutuhan-title">Tambah Kebutuhan Rutin</h2>
+<p class="modal-subtitle">Pengingat tagihan dan belanja berkala dengan perulangan otomatis.</p>
+</div>
+<button type="button" class="btn-close-modal" id="btn-close-form-kebutuhan" aria-label="Tutup">×</button>
+</div>
+<form id="form-kebutuhan" class="modal-form" style="margin-top: 0.75rem;" novalidate>
+<input type="hidden" id="form-kebutuhan-id">
+<div class="form-alert-error" id="form-kebutuhan-error" hidden></div>
+<!-- Jenis Kebutuhan: TAGIHAN vs BELANJA -->
+<div class="type-toggle-row">
+<button type="button" class="type-toggle-btn active" id="btn-jenis-tagihan" data-jenis="TAGIHAN">Tagihan (Dibayar)</button>
+<button type="button" class="type-toggle-btn" id="btn-jenis-belanja" data-jenis="BELANJA">Belanja (Dibeli)</button>
+</div>
+<div class="form-group">
+<label for="sel-kebutuhan-kategori" class="form-label">Kategori Kebutuhan <span class="required">*</span></label>
+<select id="sel-kebutuhan-kategori" class="form-control select-control" required></select>
+</div>
+<div class="form-group">
+<label for="inp-kebutuhan-nama" class="form-label">Nama Kebutuhan</label>
+<input type="text" id="inp-kebutuhan-nama" class="form-control" placeholder="Kosongkan untuk memakai nama kategori" maxlength="60">
+</div>
+<div class="form-group">
+<label for="inp-kebutuhan-nominal" class="form-label">Nominal Rencana / Estimasi <span class="required">*</span></label>
+<div class="input-prefix-wrapper">
+<span class="input-prefix">Rp</span>
+<input type="text" inputmode="numeric" id="inp-kebutuhan-nominal" class="form-control with-prefix" placeholder="0" required>
+</div>
+</div>
+<div class="form-group">
+<label class="form-label">Prioritas <span class="required">*</span></label>
+<div class="method-chip-group" id="group-kebutuhan-prioritas">
+<button type="button" class="method-chip active" data-prioritas="URGENT">Urgent</button>
+<button type="button" class="method-chip" data-prioritas="PENTING">Penting</button>
+<button type="button" class="method-chip" data-prioritas="BISA_DITUNDA">Bisa Ditunda</button>
+</div>
+</div>
+<div class="form-group">
+<label for="sel-kebutuhan-frekuensi" class="form-label">Frekuensi Pengulangan <span class="required">*</span></label>
+<select id="sel-kebutuhan-frekuensi" class="form-control select-control" required>
+<option value="BULANAN" selected>Bulanan (Berulang tiap bulan)</option>
+<option value="MINGGUAN">Mingguan (Berulang tiap pekan)</option>
+<option value="SEKALI">Sekali (Tidak berulang)</option>
+</select>
+</div>
+<div class="form-group" id="group-tempo-bulanan">
+<label for="inp-kebutuhan-tempo-hari" class="form-label">Tanggal Jatuh Tempo (1–31) <span class="required">*</span></label>
+<input type="number" id="inp-kebutuhan-tempo-hari" class="form-control" min="1" max="31" placeholder="Contoh: 1, 15, atau 31">
+<small class="form-hint">Tanggal 31 akan otomatis jatuh di hari terakhir bulan berjalan (misal: 28/29 Feb).</small>
+</div>
+<div class="form-group" id="group-tempo-mingguan" hidden>
+<label for="sel-kebutuhan-tempo-pekan" class="form-label">Hari Jatuh Tempo <span class="required">*</span></label>
+<select id="sel-kebutuhan-tempo-pekan" class="form-control select-control">
+<option value="1">Senin</option>
+<option value="2">Selasa</option>
+<option value="3">Rabu</option>
+<option value="4">Kamis</option>
+<option value="5">Jumat</option>
+<option value="6">Sabtu</option>
+<option value="7">Minggu</option>
+</select>
+</div>
+<div class="form-group" id="group-tempo-sekali" hidden>
+<label for="inp-kebutuhan-tempo-tanggal" class="form-label">Tanggal Jatuh Tempo <span class="required">*</span></label>
+<input type="date" id="inp-kebutuhan-tempo-tanggal" class="form-control" required>
+</div>
+<div class="form-group">
+<label for="inp-kebutuhan-catatan" class="form-label">Catatan (Opsional)</label>
+<textarea id="inp-kebutuhan-catatan" class="form-control" rows="2" placeholder="Nomor pelanggan, ID tagihan, atau lokasi belanja..."></textarea>
+</div>
+<div class="modal-actions">
+<button type="submit" class="btn btn-primary btn-block" id="btn-simpan-kebutuhan">Simpan Kebutuhan</button>
+</div>
+</form>
+</div>
+</div>
+<!-- 16. MODAL TANDAI SELESAI (DIBAYAR/DIBELI) -->
+<div class="modal-overlay" id="modal-selesaikan-kebutuhan" hidden>
+<div class="modal-sheet modal-sheet-compact">
+<div class="modal-header-with-close">
+<div>
+<h2 class="modal-title" id="title-selesaikan-kebutuhan">Tandai Selesai</h2>
+<p class="modal-subtitle" id="sub-selesaikan-kebutuhan">Menyelesaikan tagihan...</p>
+</div>
+<button type="button" class="btn-close-modal" id="btn-close-selesaikan" aria-label="Tutup">×</button>
+</div>
+<form id="form-selesaikan-kebutuhan" class="modal-form" style="margin-top: 0.75rem;" novalidate>
+<input type="hidden" id="form-selesai-periode-id">
+<div class="form-alert-error" id="form-selesai-error" hidden></div>
+<div class="form-group">
+<label for="inp-selesai-nominal-aktual" class="form-label">Nominal Aktual Riil <span class="required">*</span></label>
+<div class="input-prefix-wrapper">
+<span class="input-prefix">Rp</span>
+<input type="text" inputmode="numeric" id="inp-selesai-nominal-aktual" class="form-control with-prefix" placeholder="0" required>
+</div>
+<small class="form-hint" id="hint-selesai-nominal">Bawaan sesuai rencana. Ubah bila ada denda/diskon/penyesuaian meteran.</small>
+</div>
+<div class="form-row-2">
+<div class="form-group">
+<label for="inp-selesai-tanggal" class="form-label">Tanggal Bayar <span class="required">*</span></label>
+<input type="date" id="inp-selesai-tanggal" class="form-control" required>
+</div>
+<div class="form-group">
+<label for="inp-selesai-waktu" class="form-label">Waktu <span class="required">*</span></label>
+<input type="time" id="inp-selesai-waktu" class="form-control" required>
+</div>
+</div>
+<div class="form-group">
+<label class="form-label">Metode Pembayaran Kas <span class="required">*</span></label>
+<div class="method-chip-group" id="group-chip-selesai-metode">
+<button type="button" class="method-chip active" data-metode="Cash">Cash</button>
+<button type="button" class="method-chip" data-metode="QRIS">QRIS</button>
+<button type="button" class="method-chip" data-metode="Transfer">Transfer</button>
+</div>
+</div>
+<div class="form-group">
+<label for="inp-selesai-catatan" class="form-label">Catatan Pelunasan (Opsional)</label>
+<textarea id="inp-selesai-catatan" class="form-control" rows="2" placeholder="Contoh: No bukti transfer / kasir"></textarea>
+</div>
+<div class="modal-actions">
+<button type="submit" class="btn btn-primary btn-block" id="btn-konfirmasi-selesai">Simpan Pembayaran Kebutuhan</button>
+</div>
+</form>
+</div>
+</div>
+<!-- 17. MODAL DETAIL / KELOLA TEMPLATE KEBUTUHAN -->
+<div class="modal-overlay" id="modal-detail-master-kebutuhan" hidden>
+<div class="modal-sheet">
+<div class="modal-header-with-close">
+<div>
+<h2 class="modal-title" id="det-master-kebutuhan-nama">Nama Template</h2>
+<p class="modal-subtitle" id="det-master-kebutuhan-sub"></p>
+</div>
+<button type="button" class="btn-close-modal" id="btn-close-detail-master" aria-label="Tutup">×</button>
+</div>
+<div class="detail-content" id="det-master-kebutuhan-content"></div>
+<div class="detail-actions" style="margin-top: 1.5rem;">
+<button type="button" class="btn btn-secondary" id="btn-master-edit">Ubah Pengaturan</button>
+<button type="button" class="btn btn-danger-soft" id="btn-master-toggle-aktif">Nonaktifkan Kebutuhan</button>
+</div>
+</div>
+</div>
+
     <!-- 15. MODAL SET BUDGET BULANAN -->
     <div class="modal-overlay" id="modal-budget-setting" hidden>
       <div class="modal-sheet modal-sheet-compact">
@@ -867,8 +1041,8 @@
     </div>
   </div>
 
-  <script src="js/db.js?v=132"></script>
-  <script src="js/finance.js?v=132"></script>
-  <script src="js/app.js?v=132"></script>
+  <script src="js/db.js?v=140"></script>
+  <script src="js/finance.js?v=140"></script>
+  <script src="js/app.js?v=140"></script>
 </body>
 </html>
