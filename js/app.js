@@ -102,6 +102,7 @@ const App = {
       await this.loadMasterKategori();
       this.setupNavigation();
       this.setupFAB();
+      this.setupBackButton();
       this.setupTransactionForm();
       this.setupTransactionListFilters();
       this.setupDetailAndVoidTxModal();
@@ -319,6 +320,52 @@ const App = {
     if (fabMenu) fabMenu.hidden = true;
     if (fabBackdrop) fabBackdrop.hidden = true;
     if (btnFab) btnFab.classList.remove('open');
+  },
+
+  // v1.2.2: tombol Back Android menutup modal/menu yang terbuka, bukan keluar aplikasi.
+  // Saat ada lapisan terbuka, satu entri riwayat dipasang sebagai perangkap;
+  // Back memicu popstate -> lapisan ditutup. Saat lapisan ditutup lewat UI,
+  // entri perangkap dikonsumsi diam-diam.
+  setupBackButton() {
+    this._trapArmed = false;
+    this._trapConsuming = false;
+
+    const overlays = document.querySelectorAll('.modal-overlay');
+    const fabMenu = document.getElementById('fab-menu');
+
+    const anyOpen = () => {
+      let open = false;
+      overlays.forEach(el => { if (!el.hidden) open = true; });
+      if (fabMenu && !fabMenu.hidden) open = true;
+      return open;
+    };
+
+    const syncTrap = () => {
+      if (anyOpen() && !this._trapArmed) {
+        this._trapArmed = true;
+        history.pushState({ drOverlay: true }, '');
+      } else if (!anyOpen() && this._trapArmed) {
+        this._trapArmed = false;
+        this._trapConsuming = true;
+        history.back();
+      }
+    };
+
+    const observer = new MutationObserver(syncTrap);
+    overlays.forEach(el => observer.observe(el, { attributes: true, attributeFilter: ['hidden'] }));
+    if (fabMenu) observer.observe(fabMenu, { attributes: true, attributeFilter: ['hidden'] });
+
+    window.addEventListener('popstate', () => {
+      if (this._trapConsuming) {
+        this._trapConsuming = false;
+        return;
+      }
+      if (anyOpen()) {
+        this._trapArmed = false;
+        overlays.forEach(el => { el.hidden = true; });
+        this.closeFAB();
+      }
+    });
   },
 
   // ==================== HOME ====================
