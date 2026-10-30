@@ -1634,3 +1634,171 @@ body {
   background-color: #FEECEB;
   color: var(--warna-melebihi);
 }
+
+/* === Tahap 4: Kebutuhan Rutin (cangkokan Gemini, basis tetap kanonis) === */
+.status-dilewati {
+background-color: #EAE8DC;
+  color: #6B726C;
+}
+
+.section-terlewat-block {
+background-color: #FFF8F7;
+  border: 1px solid #F5C6CB;
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+}
+
+.count-badge-danger {
+background-color: #FCE8E6;
+  color: #C5221F;
+}
+
+/* ==================== TAB KEBUTUHAN (TAHAP 4) ==================== */
+.kebutuhan-filter-row {
+margin-bottom: 0.85rem;
+}
+
+.kebutuhan-card-list {
+display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.kebutuhan-card {
+background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.95rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.kebutuhan-card.card-terlewat {
+border-left: 4px solid var(--warna-melebihi);
+  background: #FFFAF9;
+}
+
+.kebutuhan-card-header {
+display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.kebutuhan-card-info {
+display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.kebutuhan-title-row {
+display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.kebutuhan-name {
+font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.kebutuhan-meta-sub {
+font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.kebutuhan-card-nominal {
+text-align: right;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.kebutuhan-nominal-main {
+font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.kebutuhan-card-actions {
+display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid #F0EEE4;
+  padding-top: 0.55rem;
+}
+
+.btn-kebutuhan-aksi {
+padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  min-height: 38px;
+}
+
+.btn-aksi-selesai {
+background-color: var(--hijau-tua);
+  color: white;
+}
+
+.btn-aksi-lewati {
+background-color: #EDECE6;
+  color: var(--text-dark);
+}
+
+/* Master Kebutuhan List */
+.master-kebutuhan-list {
+display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.master-kebutuhan-card {
+background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.master-kebutuhan-card.nonaktif {
+opacity: 0.55;
+  background: #F9F9F7;
+}
+
+.badge-prioritas {
+font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge-urgent {
+background: #FEECEB;
+  color: var(--warna-melebihi);
+}
+
+.badge-penting {
+background: #FEF3E6;
+  color: var(--warna-waspada);
+}
+
+.badge-tunda {
+background: #EDECE6;
+  color: #555555;
+}
+
+.fab-icon-kebutuhan {
+background-color: #164229;
+}
