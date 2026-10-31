@@ -1852,3 +1852,23 @@ background-color: #164229;
 .kebutuhan-card {
   cursor: pointer;
 }
+
+/* === v1.4.5-t4: tampilan Kebutuhan Nonaktif === */
+.sub-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--hijau-tua);
+  margin: 0.75rem 0 0.5rem;
+}
+
+.btn-aktifkan-periode {
+  margin-top: 0.3rem;
+  padding: 0.32rem 0.65rem;
+  background: var(--hijau-tua);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
