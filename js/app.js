@@ -132,6 +132,12 @@ const App = {
       this.setupKebutuhanForm();
       this.setupSelesaikanKebutuhanModal();
 
+      // Pulihkan tab terakhir sebelum refresh (v1.4.1-t4)
+      try {
+        const savedTab = sessionStorage.getItem('dompet-rutin-active-tab');
+        if (savedTab && savedTab !== 'tab-home') this.switchTab(savedTab);
+      } catch (e) {}
+
       await this.checkFirstRun();
       await this.catchUpKebutuhanPeriode();
       await this.refreshData();
@@ -327,6 +333,7 @@ const App = {
 
   switchTab(tabId) {
     this.activeTab = tabId;
+    try { sessionStorage.setItem('dompet-rutin-active-tab', tabId); } catch (e) {}
     document.querySelectorAll('.nav-item').forEach(el => {
       el.classList.toggle('active', el.getAttribute('data-tab') === tabId);
     });
