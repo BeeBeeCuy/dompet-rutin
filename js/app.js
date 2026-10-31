@@ -3784,7 +3784,7 @@ const App = {
 },
 
   bukaDetailMasterKebutuhan(masterId) {
-    const m = this.kebutuhanList.find(k => k.id === Number(masterId));
+    const m = this.kebutuhanList.find(k => k.id === masterId);
     if (!m) return;
     this.selectedMasterKebutuhanForDetail = m;
 
@@ -3858,7 +3858,7 @@ const App = {
 },
 
   bukaModalSelesaikanKebutuhan(periodeId) {
-    const p = this.kebutuhanPeriodeList.find(item => item.id === Number(periodeId));
+    const p = this.kebutuhanPeriodeList.find(item => item.id === periodeId);
     if (!p) return;
     const m = this.kebutuhanList.find(item => item.id === p.kebutuhan_id);
     if (!m) return;
@@ -3969,7 +3969,7 @@ const App = {
   async eksekusiLewatiPeriode(periodeId) {
     await withTransaction(['kebutuhan_periode'], 'readwrite', tx => {
       const store = tx.objectStore('kebutuhan_periode');
-      const req = store.get(Number(periodeId));
+      const req = store.get(periodeId);
       req.onsuccess = () => {
         const p = req.result;
         if (p) {
