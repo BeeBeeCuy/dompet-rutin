@@ -1823,3 +1823,14 @@ background-color: #164229;
   padding: 0.38rem 0.7rem;
   font-size: 0.76rem;
 }
+
+/* === v1.4.2-t4: status aktif toggle jenis kebutuhan === */
+.type-toggle-btn.active#btn-jenis-tagihan {
+  background: var(--terakota);
+  color: white;
+}
+
+.type-toggle-btn.active#btn-jenis-belanja {
+  background: var(--hijau-tua);
+  color: white;
+}
