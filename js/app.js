@@ -3285,7 +3285,7 @@ const App = {
 
 // ================= TAB KEBUTUHAN PENUH (TAHAP 4) =================
   setupKebutuhanTabEvents() {
-    const filterChips = document.querySelectorAll('#kebutuhan-filter-chips.filter-chip');
+    const filterChips = document.querySelectorAll('#kebutuhan-filter-chips .filter-chip');
     filterChips.forEach(chip => {
       chip.addEventListener('click', () => {
         filterChips.forEach(c => c.classList.remove('active'));
@@ -3363,7 +3363,7 @@ const App = {
               </div>
               <div style="text-align:right;">
                 <div style="font-weight:800; font-size:1rem;">${Utils.formatRupiah(m.nominal)}</div>
-                <span class="badge-prioritas badge-${m.prioritas.toLowerCase().replace('_','')}">${m.prioritas}</span>
+                <span class="badge-prioritas ${m.prioritas === 'URGENT' ? 'badge-urgent' : m.prioritas === 'PENTING' ? 'badge-penting' : 'badge-tunda'}">${m.prioritas}</span>
               </div>
             </div>
           `;
@@ -3553,7 +3553,7 @@ const App = {
 });
 
     // Priority chips
-    const priorityChips = document.querySelectorAll('#group-kebutuhan-prioritas.priority-chip');
+    const priorityChips = document.querySelectorAll('#group-kebutuhan-prioritas .method-chip');
     priorityChips.forEach(chip => {
       chip.addEventListener('click', () => {
         priorityChips.forEach(c => c.classList.remove('active'));
@@ -3623,7 +3623,7 @@ const App = {
       btnBelanja.classList.toggle('active',!isTagihan);
 
       // Prioritas
-      document.querySelectorAll('#group-kebutuhan-prioritas.priority-chip').forEach(c => {
+      document.querySelectorAll('#group-kebutuhan-prioritas .method-chip').forEach(c => {
         c.classList.toggle('active', c.getAttribute('data-prioritas') === editMaster.prioritas);
 });
 
@@ -3651,7 +3651,7 @@ const App = {
       btnTagihan.classList.add('active');
       btnBelanja.classList.remove('active');
 
-      document.querySelectorAll('#group-kebutuhan-prioritas.priority-chip').forEach((c, idx) => {
+      document.querySelectorAll('#group-kebutuhan-prioritas .method-chip').forEach((c, idx) => {
         c.classList.toggle('active', idx === 0);
 });
 
@@ -3683,7 +3683,7 @@ const App = {
 }
 
     const nominal = Utils.parseRupiah(document.getElementById('inp-kebutuhan-nominal').value);
-    const activePriority = document.querySelector('#group-kebutuhan-prioritas.priority-chip.active');
+    const activePriority = document.querySelector('#group-kebutuhan-prioritas .method-chip.active');
     const prioritas = activePriority? activePriority.getAttribute('data-prioritas'): 'PENTING';
     const frekuensi = document.getElementById('sel-kebutuhan-frekuensi').value;
     const catatan = document.getElementById('inp-kebutuhan-catatan').value.trim();
@@ -3823,7 +3823,7 @@ const App = {
       e.target.value = val > 0? val.toLocaleString('id-ID'): '';
 });
 
-    const methodChips = document.querySelectorAll('#group-chip-selesai-metode.method-chip');
+    const methodChips = document.querySelectorAll('#group-chip-selesai-metode .method-chip');
     methodChips.forEach(chip => {
       chip.addEventListener('click', () => {
         methodChips.forEach(c => c.classList.remove('active'));
@@ -3861,7 +3861,7 @@ const App = {
     document.getElementById('inp-selesai-waktu').value = waktu;
     document.getElementById('inp-selesai-catatan').value = '';
 
-    document.querySelectorAll('#group-chip-selesai-metode.method-chip').forEach((c, idx) => {
+    document.querySelectorAll('#group-chip-selesai-metode .method-chip').forEach((c, idx) => {
       c.classList.toggle('active', idx === 0);
 });
 
@@ -3879,7 +3879,7 @@ const App = {
     const waktuBayar = document.getElementById('inp-selesai-waktu').value;
     const catatan = document.getElementById('inp-selesai-catatan').value.trim();
 
-    const activeChip = document.querySelector('#group-chip-selesai-metode.method-chip.active');
+    const activeChip = document.querySelector('#group-chip-selesai-metode .method-chip.active');
     const metode = activeChip? activeChip.getAttribute('data-metode'): 'Cash';
 
     if (nominalAktual <= 0) {
