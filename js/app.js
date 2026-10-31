@@ -3295,6 +3295,17 @@ const App = {
 });
 });
 
+    // Tombol Kelola Aturan (beralih tampilan periode <-> master)
+    const toggleMasterBtn = document.getElementById('btn-toggle-master-view');
+    if (toggleMasterBtn) {
+      toggleMasterBtn.addEventListener('click', () => {
+        const toMaster = this.activeKebutuhanFilter !== 'MASTER';
+        this.activeKebutuhanFilter = toMaster ? 'MASTER' : 'SEMUA';
+        document.querySelectorAll('#kebutuhan-filter-chips .filter-chip').forEach(c => c.classList.toggle('active', !toMaster && c.getAttribute('data-filter') === 'SEMUA'));
+        this.renderTabKebutuhan();
+      });
+    }
+
     // Detail Master Kebutuhan Close & Edit
     document.getElementById('btn-close-detail-master')?.addEventListener('click', () => {
       this.tutupModal('modal-detail-master-kebutuhan');
@@ -3341,6 +3352,8 @@ const App = {
     const titleBulanIni = document.getElementById('title-kebutuhan-bulan-ini');
     const seksiMaster = document.getElementById('seksi-master-kebutuhan');
     const listMaster = document.getElementById('list-master-kebutuhan');
+    const toggleMasterBtn = document.getElementById('btn-toggle-master-view');
+    if (toggleMasterBtn) toggleMasterBtn.textContent = this.activeKebutuhanFilter === 'MASTER' ? '\u2190 Kembali ke Daftar Periode' : 'Kelola Aturan Kebutuhan';
 
     titleBulanIni.textContent = `Kebutuhan Periode ${Utils.formatBulanIndo(tahunBulan)}`;
 
@@ -3463,7 +3476,7 @@ const App = {
     const nominalTampil = (isSelesai && p.nominal_aktual)? p.nominal_aktual: m.nominal;
 
     return `
-      <div class="${cardClass}" data-periode-id="${p.id}">
+      <div class="${cardClass}" data-periode-id="${p.id}" data-master-id="${m.id}">
         <div class="kebutuhan-card-header">
           <div class="kebutuhan-card-info">
             <div class="kebutuhan-title-row">
@@ -3493,6 +3506,13 @@ const App = {
 },
 
   attachKebutuhanCardEvents(container) {
+    container.querySelectorAll('.kebutuhan-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const mId = card.getAttribute('data-master-id');
+        if (mId) this.bukaDetailMasterKebutuhan(mId);
+      });
+    });
+
     container.querySelectorAll('button[data-action="selesai"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -3764,7 +3784,7 @@ const App = {
 },
 
   bukaDetailMasterKebutuhan(masterId) {
-    const m = this.kebutuhanList.find(k => k.id === masterId);
+    const m = this.kebutuhanList.find(k => k.id === Number(masterId));
     if (!m) return;
     this.selectedMasterKebutuhanForDetail = m;
 
@@ -3838,7 +3858,7 @@ const App = {
 },
 
   bukaModalSelesaikanKebutuhan(periodeId) {
-    const p = this.kebutuhanPeriodeList.find(item => item.id === periodeId);
+    const p = this.kebutuhanPeriodeList.find(item => item.id === Number(periodeId));
     if (!p) return;
     const m = this.kebutuhanList.find(item => item.id === p.kebutuhan_id);
     if (!m) return;
@@ -3949,7 +3969,7 @@ const App = {
   async eksekusiLewatiPeriode(periodeId) {
     await withTransaction(['kebutuhan_periode'], 'readwrite', tx => {
       const store = tx.objectStore('kebutuhan_periode');
-      const req = store.get(periodeId);
+      const req = store.get(Number(periodeId));
       req.onsuccess = () => {
         const p = req.result;
         if (p) {
