@@ -1834,3 +1834,21 @@ background-color: #164229;
   background: var(--hijau-tua);
   color: white;
 }
+
+/* === v1.4.3-t4: tombol Kelola Aturan + kartu kebutuhan bisa diketuk === */
+.btn-kelola-aturan {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 1rem;
+  background: #EEF3EC;
+  border: 1.5px dashed #B9CDBB;
+  border-radius: var(--radius-md);
+  color: var(--hijau-tua);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.kebutuhan-card {
+  cursor: pointer;
+}
