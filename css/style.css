@@ -1802,3 +1802,24 @@ background: #EDECE6;
 .fab-icon-kebutuhan {
 background-color: #164229;
 }
+
+/* === v1.4.1-t4: baris filter Kebutuhan lebih lega, tanpa scrollbar === */
+.kebutuhan-filter-row {
+  margin: 0.35rem 0 1rem;
+}
+
+#kebutuhan-filter-chips {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 0;
+  scrollbar-width: none;
+}
+
+#kebutuhan-filter-chips::-webkit-scrollbar {
+  display: none;
+}
+
+#kebutuhan-filter-chips .filter-chip {
+  padding: 0.38rem 0.7rem;
+  font-size: 0.76rem;
+}
