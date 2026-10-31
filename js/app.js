@@ -3279,7 +3279,7 @@ const App = {
 } else {
       emptyBox.hidden = true;
       container.innerHTML = displayList.map(item => this.createKebutuhanCardHTML(item.periode, item.master, false)).join('');
-      this.attachKebutuhanCardEvents(container);
+      this.attachKebutuhanCardEvents(container, true);
 }
 },
 
@@ -3299,8 +3299,8 @@ const App = {
     const toggleMasterBtn = document.getElementById('btn-toggle-master-view');
     if (toggleMasterBtn) {
       toggleMasterBtn.addEventListener('click', () => {
-        const toMaster = this.activeKebutuhanFilter !== 'MASTER';
-        this.activeKebutuhanFilter = toMaster ? 'MASTER' : 'SEMUA';
+        const toMaster = this.activeKebutuhanFilter !== 'NONAKTIF';
+        this.activeKebutuhanFilter = toMaster ? 'NONAKTIF' : 'SEMUA';
         document.querySelectorAll('#kebutuhan-filter-chips .filter-chip').forEach(c => c.classList.toggle('active', !toMaster && c.getAttribute('data-filter') === 'SEMUA'));
         this.renderTabKebutuhan();
       });
@@ -3353,20 +3353,25 @@ const App = {
     const seksiMaster = document.getElementById('seksi-master-kebutuhan');
     const listMaster = document.getElementById('list-master-kebutuhan');
     const toggleMasterBtn = document.getElementById('btn-toggle-master-view');
-    if (toggleMasterBtn) toggleMasterBtn.textContent = this.activeKebutuhanFilter === 'MASTER' ? '\u2190 Kembali ke Daftar Periode' : 'Kelola Aturan Kebutuhan';
+    if (toggleMasterBtn) toggleMasterBtn.textContent = this.activeKebutuhanFilter === 'NONAKTIF' ? '\u2190 Kembali ke Daftar Periode' : 'Kebutuhan Nonaktif';
 
     titleBulanIni.textContent = `Kebutuhan Periode ${Utils.formatBulanIndo(tahunBulan)}`;
 
-    if (this.activeKebutuhanFilter === 'MASTER') {
+    if (this.activeKebutuhanFilter === 'NONAKTIF') {
       seksiTerlewat.hidden = true;
       seksiBulanIni.hidden = true;
       seksiMaster.hidden = false;
 
-      // Render daftar master
-      if (this.kebutuhanList.length === 0) {
-        listMaster.innerHTML = '<div class="empty-state-box"><p>Belum ada template kebutuhan.</p></div>';
+      // Render daftar nonaktif: template nonaktif + periode yang dilewati
+      const nonaktifList = this.kebutuhanList.filter(m => !m.aktif);
+      const dilewatiItems = this.kebutuhanPeriodeList.filter(px => px.status === 'DILEWATI')
+        .map(px => ({ periode: px, master: this.kebutuhanList.find(k => k.id === px.kebutuhan_id) }))
+        .filter(x => x.master)
+        .sort((a, b) => (b.periode.periode || '').localeCompare(a.periode.periode || ''));
+      if (nonaktifList.length === 0 && dilewatiItems.length === 0) {
+        listMaster.innerHTML = '<div class="empty-state-box"><p>Tidak ada kebutuhan nonaktif atau periode yang dilewati.</p></div>';
 } else {
-        listMaster.innerHTML = this.kebutuhanList.map(m => {
+        listMaster.innerHTML = (nonaktifList.length > 0 ? '<h3 class="sub-section-title">Template Nonaktif</h3>' : '') + nonaktifList.map(m => {
           const katObj = this.kategoriList.find(k => k.id === m.kategori_id);
           return `
             <div class="master-kebutuhan-card ${m.aktif? '': 'nonaktif'}" data-master-id="${m.id}">
@@ -3388,6 +3393,28 @@ const App = {
             this.bukaDetailMasterKebutuhan(mId);
 });
 });
+
+        if (dilewatiItems.length > 0) {
+          const wrap = document.createElement('div');
+          wrap.innerHTML = '<h3 class="sub-section-title">Periode Dilewati</h3>' + dilewatiItems.map(({ periode: px, master: m }) => `
+            <div class="master-kebutuhan-card">
+              <div>
+                <div style="font-weight:700; font-size:0.95rem;">${m.nama}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">Periode ${px.periode} \u00b7 Tempo: ${Utils.formatTanggalIndo(px.tanggal_jatuh_tempo)}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:800; font-size:1rem;">${Utils.formatRupiah(m.nominal)}</div>
+                <button type="button" class="btn-aktifkan-periode" data-periode-id="${px.id}">Aktifkan Kembali</button>
+              </div>
+            </div>`).join('');
+          listMaster.appendChild(wrap);
+          wrap.querySelectorAll('.btn-aktifkan-periode').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+              e.stopPropagation();
+              await this.aktifkanKembaliPeriode(btn.getAttribute('data-periode-id'));
+            });
+          });
+        }
 }
 
       return;
@@ -3505,11 +3532,11 @@ const App = {
     `;
 },
 
-  attachKebutuhanCardEvents(container) {
+  attachKebutuhanCardEvents(container, readOnly = false) {
     container.querySelectorAll('.kebutuhan-card').forEach(card => {
       card.addEventListener('click', () => {
         const mId = card.getAttribute('data-master-id');
-        if (mId) this.bukaDetailMasterKebutuhan(mId);
+        if (mId) this.bukaDetailMasterKebutuhan(mId, readOnly);
       });
     });
 
@@ -3783,10 +3810,27 @@ const App = {
     await this.refreshData();
 },
 
-  bukaDetailMasterKebutuhan(masterId) {
+  async aktifkanKembaliPeriode(periodeId) {
+    await withTransaction(['kebutuhan_periode'], 'readwrite', tx => {
+      const store = tx.objectStore('kebutuhan_periode');
+      const req = store.get(periodeId);
+      req.onsuccess = () => {
+        const item = req.result;
+        if (item && item.status === 'DILEWATI') {
+          item.status = 'BELUM';
+          store.put(item);
+        }
+      };
+    });
+    await this.refreshData();
+  },
+
+  bukaDetailMasterKebutuhan(masterId, readOnly = false) {
     const m = this.kebutuhanList.find(k => k.id === masterId);
     if (!m) return;
     this.selectedMasterKebutuhanForDetail = m;
+    const detActions = document.querySelector('#modal-detail-master-kebutuhan .detail-actions');
+    if (detActions) detActions.hidden = readOnly;
 
     const katObj = this.kategoriList.find(k => k.id === m.kategori_id);
     document.getElementById('det-master-kebutuhan-nama').textContent = m.nama;
