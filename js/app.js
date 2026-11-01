@@ -3125,7 +3125,7 @@ const App = {
     return this.transaksiList.filter(t => {
       if (t.dibatalkan) return false;
       if (t.tipe !== 'PEMASUKAN') return false; // Hanya tipe PEMASUKAN
-      if (t.metode !== 'QRIS GoPay' && t.metode !== 'Transfer BCA') return false; // Tunai (Cash) ditolak; nilai kanonis: QRIS GoPay / Transfer BCA
+      if (t.metode !== 'QRIS' && t.metode !== 'Transfer') return false; // Tunai (Cash) ditolak; nilai tersimpan dari chip formulir: 'Cash'/'QRIS'/'Transfer'
       if (t.hutang_id || t.patungan_id || t.kebutuhan_id) return false; // Harus belum tertaut
 
       const tDate = new Date(`${t.tanggal}T${t.waktu || '00:00'}`);
