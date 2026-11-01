@@ -7,7 +7,7 @@
   <meta name="description" content="Dompet Rutin - Pencatat Keuangan, Hutang Piutang & Patungan Offline">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23164229'><path d='M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>">
-  <link rel="stylesheet" href="css/style.css?v=151">
+  <link rel="stylesheet" href="css/style.css?v=160">
   <title>Dompet Rutin</title>
 </head>
 <body>
@@ -299,10 +299,38 @@
   </div>
 </div>
 
+<!-- KARTU DATA & CADANGAN (TAHAP 6, PRD §9, §7.8) -->
+<div class="card card-cadangan" id="card-data-cadangan" style="margin-top:1.25rem;">
+<div class="card-header-simple">
+<h3 class="section-title">Data & Keamanan Cadangan</h3>
+<span class="badge-soft">Offline-First</span>
+</div>
+<p class="cadangan-meta-text" id="txt-cadangan-terakhir">Belum pernah dicadangkan</p>
+
+<!-- Box Pengingat Halus Cadangan (>30 hari / belum ada) -->
+<div class="box-pengingat-cadangan" id="box-pengingat-cadangan">
+<span class="pengingat-icon">💡</span>
+<span class="pengingat-text">Seluruh data hidup di HP Anda sendiri. Buat cadangan terenkripsi secara berkala agar aman saat ganti perangkat.</span>
+</div>
+
+<div class="cadangan-button-stack" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.65rem;">
+<button type="button" class="btn btn-primary btn-block" id="btn-profil-ekspor-cadangan">
+🔒 Ekspor Cadangan Terenkripsi
+</button>
+<button type="button" class="btn btn-secondary btn-block" id="btn-profil-pulihkan-cadangan">
+📥 Pulihkan dari Cadangan
+</button>
+<button type="button" class="btn btn-secondary btn-block" id="btn-profil-ekspor-csv">
+📊 Ekspor CSV (Spreadsheet)
+</button>
+</div>
+<input type="file" id="inp-file-pulihkan" accept=".json,application/json" hidden>
+</div>
+
 <!-- Tentang Aplikasi -->
 <div class="section-block" style="text-align:center; padding: 1.5rem 0;">
   <p class="text-muted" style="font-size:0.78rem;">Dompet Rutin — Offline Financial Ledger</p>
-  <p class="text-muted" style="font-size:0.72rem; margin-top:2px;" id="txt-app-version">Versi 1.5.1 (Tahap 5) · IndexedDB v1</p>
+  <p class="text-muted" style="font-size:0.72rem; margin-top:2px;" id="txt-app-version">Versi 1.6.0 (Tahap 6) · IndexedDB v1</p>
 </div>
 </section>
     </main>
@@ -1261,8 +1289,103 @@
   </div>
 </div>
 
-    <script src="js/db.js?v=151"></script>
-  <script src="js/finance.js?v=151"></script>
-  <script src="js/app.js?v=151"></script>
+<!-- ================= TAHAP 6: MODAL CADANGAN & PULIHKAN ================= -->
+
+<!-- 16. MODAL EKSPOR CADANGAN TERENKRIPSI (PRD §9) -->
+<div class="modal-overlay" id="modal-ekspor-cadangan" hidden>
+  <div class="modal-sheet modal-sheet-compact">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title">🔒 Ekspor Cadangan Terenkripsi</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-ekspor-cadangan" aria-label="Tutup">×</button>
+    </div>
+    <div class="alert-box-warning" style="margin-bottom:0.85rem;">
+      <strong>Penting:</strong> Buat kata sandi pengaman cadangan. Jika Anda lupa kata sandi ini, <strong>data cadangan tidak dapat dipulihkan oleh siapa pun</strong>.
+    </div>
+    <form id="form-ekspor-cadangan" novalidate>
+      <div class="form-alert-error" id="form-ekspor-error" hidden></div>
+      <div class="form-group">
+        <label for="inp-ekspor-pwd" class="form-label">Kata Sandi Baru (Min. 8 Karakter) <span class="required">*</span></label>
+        <input type="password" id="inp-ekspor-pwd" class="form-control" placeholder="Minimal 8 karakter..." required minlength="8" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label for="inp-ekspor-pwd-confirm" class="form-label">Ulangi Kata Sandi <span class="required">*</span></label>
+        <input type="password" id="inp-ekspor-pwd-confirm" class="form-control" placeholder="Ketik ulang kata sandi..." required minlength="8" autocomplete="new-password">
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block" id="btn-eksekusi-ekspor">Enkripsi & Unduh Cadangan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 17. MODAL PULIHKAN DARI CADANGAN (INPUT PASSWORD) -->
+<div class="modal-overlay" id="modal-pulihkan-password" hidden>
+  <div class="modal-sheet modal-sheet-compact">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title">🔓 Masukkan Kata Sandi Cadangan</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-pulihkan-pwd" aria-label="Tutup">×</button>
+    </div>
+    <p class="modal-subtitle">Masukkan kata sandi yang Anda buat saat mengekspor berkas ini.</p>
+    <form id="form-pulihkan-password" novalidate style="margin-top:0.75rem;">
+      <div class="form-alert-error" id="form-pulihkan-error" hidden></div>
+      <div class="form-group">
+        <label for="inp-pulihkan-pwd" class="form-label">Kata Sandi Cadangan <span class="required">*</span></label>
+        <input type="password" id="inp-pulihkan-pwd" class="form-control" placeholder="Masukkan kata sandi..." required autocomplete="current-password">
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block" id="btn-buka-dekripsi-cadangan">Dekripsi & Periksa Berkas</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 18. MODAL KONFIRMASI PULIHKAN (RINGKASAN DATA & PENGAMAN OTOMATIS) -->
+<div class="modal-overlay" id="modal-pulihkan-konfirmasi" hidden>
+  <div class="modal-sheet">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title text-danger">Konfirmasi Pemulihan Data</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-pulihkan-konfirm" aria-label="Tutup">×</button>
+    </div>
+    <div class="alert-box-warning">
+      <strong>Perhatian:</strong> Seluruh data saat ini di HP akan diganti dengan isi berkas cadangan ini.
+    </div>
+    <div class="section-block" style="margin-top:0.75rem;">
+      <h3 class="section-title">Ringkasan Isi Berkas Cadangan</h3>
+      <div class="pratinjau-box" id="pulihkan-ringkasan-konten" style="margin-top:0.4rem;"></div>
+    </div>
+    <p class="text-muted" style="font-size:0.75rem; line-height:1.35; margin:0.75rem 0;">
+      * Pengaman Otomatis: Aplikasi akan <strong>otomatis mengunduh cadangan terenkripsi dari data saat ini</strong> terlebih dahulu sebelum proses penggantian dimulai.
+    </p>
+    <div class="modal-actions" style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;">
+      <button type="button" class="btn btn-secondary" id="btn-batal-pulihkan-eksekusi">Batal</button>
+      <button type="button" class="btn btn-danger" id="btn-eksekusi-pulihkan-final">Ganti & Pulihkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- 19. MODAL PERINGATAN EKSPOR CSV (PRD §9) -->
+<div class="modal-overlay" id="modal-ekspor-csv-warning" hidden>
+  <div class="modal-sheet modal-sheet-compact">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title">📊 Ekspor CSV Spreadsheet</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-csv-warning" aria-label="Tutup">×</button>
+    </div>
+    <div class="alert-box-warning" style="margin-bottom:0.85rem;">
+      <strong>Peringatan Privasi:</strong> Berkas CSV <strong>TIDAK terenkripsi</strong> dan berisi seluruh catatan keuangan pribadi Anda. Simpan atau bagikan dengan sangat hati-hati.
+    </div>
+    <p class="text-muted" style="font-size:0.82rem; margin-bottom:1rem;">
+      Aplikasi akan mengunduh 2 berkas terpisah:
+      <br>1. <code>dompet-rutin-transaksi-YYYYMMDD.csv</code>
+      <br>2. <code>dompet-rutin-hutang-YYYYMMDD.csv</code>
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary btn-block" id="btn-eksekusi-unduh-csv">Saya Mengerti, Unduh 2 Berkas CSV</button>
+    </div>
+  </div>
+</div>
+
+    <script src="js/db.js?v=160"></script>
+  <script src="js/finance.js?v=160"></script>
+  <script src="js/app.js?v=160"></script>
 </body>
 </html>

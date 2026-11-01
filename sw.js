@@ -1,14 +1,14 @@
 // sw.js
-// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 5: Periksa Pembayaran & Profil v1.5.0
-const CACHE_NAME = 'dompet-rutin-v1.5.1-t5';
+// Service Worker Kanonik Dompet Rutin v1.1 - Tahap 6: Cadangan Terenkripsi, Pulihkan & CSV v1.6.0
+const CACHE_NAME = 'dompet-rutin-v1.6.0-t6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './css/style.css?v=151',
-  './js/db.js?v=151',
-  './js/finance.js?v=151',
-  './js/app.js?v=151',
+  './css/style.css?v=160',
+  './js/db.js?v=160',
+  './js/finance.js?v=160',
+  './js/app.js?v=160',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
