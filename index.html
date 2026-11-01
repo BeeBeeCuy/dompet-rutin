@@ -7,7 +7,7 @@
   <meta name="description" content="Dompet Rutin - Pencatat Keuangan, Hutang Piutang & Patungan Offline">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23164229'><path d='M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>">
-  <link rel="stylesheet" href="css/style.css?v=145">
+  <link rel="stylesheet" href="css/style.css?v=150">
   <title>Dompet Rutin</title>
 </head>
 <body>
@@ -124,6 +124,17 @@
           </div>
         </div>
 
+<!-- Kartu Periksa Pembayaran Masuk (§7.7 PRD) -->
+        <div class="card card-periksa clickable" id="card-periksa-pembayaran">
+          <div class="periksa-card-left">
+            <div class="periksa-icon-circle"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></div>
+            <div>
+              <div class="periksa-title">Periksa Pembayaran Masuk</div>
+              <div class="periksa-desc">Cocokkan transaksi QRIS & Transfer dengan piutang aktif</div>
+            </div>
+          </div>
+          <span class="badge-kandidat-count" id="badge-periksa-kandidat" hidden>0</span>
+        </div>
         <div class="hutang-action-bar">
           <button type="button" class="btn btn-secondary btn-sm" id="btn-buka-daftar-teman">
             <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Kelola Teman & Saldo Bersih
@@ -198,17 +209,102 @@
 </div>
 </section>
 
-      <!-- TAB 5: PROFIL -->
+      <!-- TAB 5: PROFIL LENGKAP (Tahap 5, §7.8 PRD) -->
       <section id="tab-profil" class="tab-pane">
-        <div class="placeholder-pane">
-          <h2>Profil & Pengaturan</h2>
-          <p class="text-muted">Akan aktif penuh pada Tahap 5 & 6.</p>
-          <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
-            <button type="button" class="btn btn-secondary" id="btn-profil-atur-budget">Atur Budget Bulanan</button>
-            <button type="button" class="btn btn-secondary" id="btn-buka-ulang-penyiapan">Edit Nama & Saldo Awal</button>
+        <!-- Kartu Identitas Pengguna -->
+        <div class="card card-profil-user">
+          <div class="profil-user-header">
+            <div class="profil-avatar" id="profil-avatar-inisial">U</div>
+            <div class="profil-user-info">
+              <span class="profil-user-sapaan" id="profil-sapaan-display">Pemilik Akun</span>
+              <h2 class="profil-user-name" id="profil-nama-display">Pengguna</h2>
+            </div>
+            <button type="button" class="btn-icon-action" id="btn-profil-edit-nama" aria-label="Ubah Nama"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
           </div>
         </div>
-      </section>
+<!-- Kartu QRIS Saya (§7.8 PRD) -->
+<div class="card card-qris-container" id="card-qris-saya">
+  <div class="card-header-simple">
+    <h3 class="section-title">QRIS Saya</h3>
+    <span class="badge-soft">Untuk Menagih</span>
+  </div>
+
+  <div class="qris-preview-box" id="box-preview-qris">
+    <img id="img-qris-saya" class="qris-image-view" alt="QRIS Saya" hidden>
+    <div class="qris-empty-placeholder" id="qris-empty-box">
+      <div class="qris-empty-icon"></div>
+      <p>Belum ada gambar QRIS tersimpan.</p>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-unggah-qris">+ Unggah Gambar QRIS</button>
+    </div>
+  </div>
+
+  <p class="qris-legal-text">QRIS hanya ditampilkan/dibagikan, bukan bukti pembayaran.</p>
+
+  <div class="qris-action-row" id="qris-action-buttons" hidden>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-bagikan-qris"> Bagikan QRIS</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-ganti-qris">Ganti</button>
+    <button type="button" class="btn btn-danger-soft btn-sm" id="btn-hapus-qris">Hapus</button>
+  </div>
+  <input type="file" id="inp-file-qris" accept="image/png, image/jpeg" hidden>
+</div>
+
+<!-- Kartu Info Rekening Saya (§7.8 PRD) -->
+<div class="card card-rekening" id="card-info-rekening">
+  <div class="card-header-simple">
+    <h3 class="section-title">Info Pembayaran Saya</h3>
+    <button type="button" class="btn-text" id="btn-edit-rekening">Atur Rekening</button>
+  </div>
+  <div class="rekening-display-body" id="body-rekening-display">
+    <div class="rek-item-row">
+      <span class="rek-label">Nama Bank:</span>
+      <strong class="rek-val" id="txt-rekening-bank">-</strong>
+    </div>
+    <div class="rek-item-row">
+      <span class="rek-label">Nomor Rekening:</span>
+      <strong class="rek-val font-mono" id="txt-rekening-nomor">-</strong>
+    </div>
+    <div class="rek-item-row">
+      <span class="rek-label">Atas Nama:</span>
+      <strong class="rek-val" id="txt-rekening-an">-</strong>
+    </div>
+  </div>
+  <div class="rekening-action-row" style="margin-top:0.75rem;">
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-salin-rekening"> Salin Info Rekening</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-bagikan-rekening"> Bagikan</button>
+  </div>
+</div>
+
+<!-- Pengaturan Keuangan & Rekonsiliasi Kas -->
+<div class="section-block">
+  <h3 class="section-title" style="margin-bottom:0.6rem;">Pengaturan Saldo & Budget</h3>
+
+  <div class="setting-list-card">
+    <!-- Budget Setting Row -->
+    <div class="setting-row-item clickable" id="btn-profil-edit-budget">
+      <div class="setting-item-left">
+        <span class="setting-item-title">Target Budget Bulanan</span>
+        <span class="setting-item-sub" id="profil-budget-val">Rp0 / bulan</span>
+      </div>
+      <span class="setting-arrow">></span>
+    </div>
+
+    <!-- Saldo Awal / Rekonsiliasi Row -->
+    <div class="setting-row-item clickable" id="btn-profil-saldo-awal">
+      <div class="setting-item-left">
+        <span class="setting-item-title">Saldo Awal & Penyesuaian Kas</span>
+        <span class="setting-item-sub">Koreksi fisik kas tanpa mengotori budget</span>
+      </div>
+      <span class="setting-arrow">></span>
+    </div>
+  </div>
+</div>
+
+<!-- Tentang Aplikasi -->
+<div class="section-block" style="text-align:center; padding: 1.5rem 0;">
+  <p class="text-muted" style="font-size:0.78rem;">Dompet Rutin — Offline Financial Ledger</p>
+  <p class="text-muted" style="font-size:0.72rem; margin-top:2px;" id="txt-app-version">Versi 1.5.0 (Tahap 5) · IndexedDB v1</p>
+</div>
+</section>
     </main>
 
     <!-- FAB Kontekstual -->
@@ -1041,8 +1137,132 @@
     </div>
   </div>
 
-  <script src="js/db.js?v=145"></script>
-  <script src="js/finance.js?v=145"></script>
-  <script src="js/app.js?v=145"></script>
+<!-- 15. MODAL PERIKSA PEMBAYARAN MASUK (§7.7 PRD) -->
+<div class="modal-overlay" id="modal-periksa-pembayaran" hidden>
+  <div class="modal-sheet">
+    <div class="modal-header-with-close">
+      <div>
+        <h2 class="modal-title">Periksa Pembayaran Masuk</h2>
+        <p class="modal-subtitle">Pencocokan mutasi QRIS & Transfer dengan piutang aktif (60 hari terakhir).</p>
+      </div>
+      <button type="button" class="btn-close-modal" id="btn-close-periksa" aria-label="Tutup">×</button>
+    </div>
+
+    <div class="periksa-kandidat-container" id="list-periksa-kandidat"></div>
+    <div class="empty-state-box" id="empty-periksa-kandidat" hidden>
+      <p>Tidak ada transaksi QRIS atau Transfer yang belum tertaut dalam 60 hari terakhir.</p>
+    </div>
+  </div>
+</div>
+
+<!-- 16. DIALOG PRATINJAU PENAUTAN ULANG ATOMIK (§7.7 PRD) -->
+<div class="modal-overlay" id="modal-pratinjau-penautan" hidden>
+  <div class="modal-sheet modal-sheet-compact">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title">Konfirmasi Penautan</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-pratinjau-penautan" aria-label="Tutup">×</button>
+    </div>
+    <p class="modal-subtitle">Tinjau perubahan sebelum penautan disimpan secara permanen:</p>
+
+    <div class="pratinjau-box" id="pratinjau-penautan-content"></div>
+
+    <div class="modal-actions" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+      <button type="button" class="btn btn-secondary" id="btn-batal-pratinjau-penautan">Batal</button>
+      <button type="button" class="btn btn-primary" id="btn-konfirmasi-penautan">Tautkan Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TAHAP 5: PENGATURAN PROFIL ================= -->
+
+<!-- 17. MODAL UBAH NAMA PENGGUNA -->
+<div class="modal-overlay" id="modal-edit-nama" hidden>
+  <div class="modal-sheet modal-sheet-compact">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title">Ubah Nama Panggilan</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-edit-nama" aria-label="Tutup">×</button>
+    </div>
+    <form id="form-edit-nama" novalidate>
+      <div class="form-group" style="margin-top:0.75rem;">
+        <label for="inp-profil-nama" class="form-label">Nama Panggilan <span class="required">*</span></label>
+        <input type="text" id="inp-profil-nama" class="form-control" required maxlength="30">
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block" id="btn-simpan-profil-nama">Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 18. MODAL UBAH INFO REKENING SAYA (§7.8 PRD) -->
+<div class="modal-overlay" id="modal-edit-rekening" hidden>
+  <div class="modal-sheet modal-sheet-compact">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title">Atur Rekening Saya</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-edit-rek" aria-label="Tutup">×</button>
+    </div>
+    <p class="modal-subtitle">Info pembayaran tersimpan lokal untuk dibagikan ke teman saat menagih hutang.</p>
+
+    <form id="form-edit-rekening" novalidate style="margin-top:0.75rem;">
+      <div class="form-group">
+        <label for="inp-rek-bank" class="form-label">Nama Bank / Tujuan <span class="required">*</span></label>
+        <input type="text" id="inp-rek-bank" class="form-control" placeholder="Contoh: BCA / GoPay / Bank Mandiri" required maxlength="30">
+      </div>
+      <div class="form-group">
+        <label for="inp-rek-nomor" class="form-label">Nomor Rekening / No. HP <span class="required">*</span></label>
+        <input type="text" id="inp-rek-nomor" class="form-control font-mono" placeholder="Contoh: 1234567890" required maxlength="35">
+      </div>
+      <div class="form-group">
+        <label for="inp-rek-an" class="form-label">Atas Nama Rekening <span class="required">*</span></label>
+        <input type="text" id="inp-rek-an" class="form-control" placeholder="Contoh: Muhammad Irfan" required maxlength="50">
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block">Simpan Info Rekening</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 19. MODAL SALDO AWAL & PENYESUAIAN KAS (§5, §7.8 PRD) -->
+<div class="modal-overlay" id="modal-penyesuaian-kas" hidden>
+  <div class="modal-sheet modal-sheet-compact">
+    <div class="modal-header-with-close">
+      <h2 class="modal-title">Penyesuaian / Saldo Awal Kas</h2>
+      <button type="button" class="btn-close-modal" id="btn-close-penyesuaian" aria-label="Tutup">×</button>
+    </div>
+    <p class="modal-subtitle">Rekonsiliasi kas riil tanpa mempengaruhi catatan pengeluaran/pemasukan bulanan maupun budget.</p>
+
+    <form id="form-penyesuaian-kas" novalidate style="margin-top:0.75rem;">
+      <div class="form-alert-error" id="form-penyesuaian-error" hidden></div>
+
+      <div class="type-toggle-row">
+        <button type="button" class="type-toggle-btn active" id="btn-arah-saldo-tambah" data-arah="+">+ Tambah Kas (Selisih Lebih)</button>
+        <button type="button" class="type-toggle-btn" id="btn-arah-saldo-kurang" data-arah="-">− Kurang Kas (Selisih Kurang)</button>
+      </div>
+
+      <div class="form-group">
+        <label for="inp-penyesuaian-nominal" class="form-label">Nominal Penyesuaian <span class="required">*</span></label>
+        <div class="input-prefix-wrapper">
+          <span class="input-prefix">Rp</span>
+          <input type="text" inputmode="numeric" id="inp-penyesuaian-nominal" class="form-control with-prefix" placeholder="0" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="inp-penyesuaian-catatan" class="form-label">Alasan / Catatan Rekonsiliasi <span class="required">*</span></label>
+        <input type="text" id="inp-penyesuaian-catatan" class="form-control" placeholder="Wajib diisi (Contoh: Uang kembalian tercecer / selisih hitung fisik)" required maxlength="100">
+        <small class="form-hint">Penyesuaian rekonsiliasi kas wajib menyertakan alasan.</small>
+      </div>
+
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block">Simpan Penyesuaian Kas</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+    <script src="js/db.js?v=150"></script>
+  <script src="js/finance.js?v=150"></script>
+  <script src="js/app.js?v=150"></script>
 </body>
 </html>
