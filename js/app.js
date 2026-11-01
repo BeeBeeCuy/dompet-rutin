@@ -70,6 +70,133 @@ const Utils = {
       return (words[0][0] + words[1][0]).toUpperCase();
     }
     return nama.substring(0, 2).toUpperCase();
+  },
+
+  // Konverter Base64 & Blob untuk Web Crypto & Ekspor
+  arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  },
+
+  base64ToArrayBuffer(base64) {
+    const binary = window.atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  },
+
+  blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  },
+
+  base64ToBlob(base64, mimeType = 'image/png') {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
+  }
+};
+
+const CryptoBackup = {
+  PBKDF2_ITERATIONS: 310000,
+
+  async deriveKey(password, saltBuffer, iterations = 310000) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: saltBuffer,
+        iterations: iterations,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  },
+
+  async encryptPayload(password, jsonPayloadString) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await this.deriveKey(password, salt, this.PBKDF2_ITERATIONS);
+
+    const enc = new TextEncoder();
+    const ciphertextBuffer = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      key,
+      enc.encode(jsonPayloadString)
+    );
+
+    return {
+      app: 'dompet-rutin',
+      versi_format: 1,
+      db_version: 1,
+      kdf: 'PBKDF2-HMAC-SHA-256',
+      iterasi: this.PBKDF2_ITERATIONS,
+      salt: Utils.arrayBufferToBase64(salt),
+      iv: Utils.arrayBufferToBase64(iv),
+      data: Utils.arrayBufferToBase64(ciphertextBuffer)
+    };
+  },
+
+  async decryptPayload(password, envelope) {
+    if (!envelope || envelope.app !== 'dompet-rutin') {
+      throw new Error('Berkas cadangan tidak valid atau bukan berasal dari aplikasi Dompet Rutin.');
+    }
+
+    if (envelope.db_version !== 1) {
+      throw new Error(`Versi cadangan ${envelope.db_version} tidak didukung aplikasi ini (versi 1).`);
+    }
+
+    const saltBuffer = Utils.base64ToArrayBuffer(envelope.salt);
+    const ivBuffer = Utils.base64ToArrayBuffer(envelope.iv);
+    const ciphertextBuffer = Utils.base64ToArrayBuffer(envelope.data);
+    const iterations = envelope.iterasi || this.PBKDF2_ITERATIONS;
+
+    const key = await this.deriveKey(password, saltBuffer, iterations);
+
+    let decryptedBuffer;
+    try {
+      decryptedBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: ivBuffer },
+        key,
+        ciphertextBuffer
+      );
+    } catch (err) {
+      throw new Error('Kata sandi salah atau data cadangan rusak (autentikasi gagal).');
+    }
+
+    const dec = new TextDecoder();
+    const jsonString = dec.decode(decryptedBuffer);
+    return JSON.parse(jsonString);
   }
 };
 
@@ -84,6 +211,7 @@ const App = {
   patunganPesertaList: [],
   kebutuhanList: [],
   kebutuhanPeriodeList: [],
+  cadanganInfoList: [],
 
   // View state
   activeTab: 'tab-home',
@@ -102,11 +230,19 @@ const App = {
   selectedPatunganForDetail: null,
   selectedPeriodeToFinish: null,
   selectedMasterKebutuhanForDetail: null,
+  pendingRestoreEnvelope: null,
+  pendingRestoreObject: null,
+  pendingRestorePassword: null,
 
   async init() {
     try {
       this.initServiceWorker();
       await initDB();
+
+      // Minta izin persistent storage saat inisialisasi (PRD §13)
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(() => {});
+      }
 
       await this.loadMasterKategori();
       this.setupBackButton();
@@ -136,6 +272,9 @@ const App = {
       // Fitur Tahap 5: Periksa Pembayaran & Profil
       this.setupPeriksaPembayaran();
       this.setupProfilLengkap();
+
+      // Fitur Tahap 6: Cadangan, Pulihkan & CSV
+      this.setupDataDanCadangan();
 
       // Pulihkan tab terakhir sebelum refresh (v1.4.1-t4)
       try {
@@ -215,7 +354,7 @@ const App = {
   },
 
   async refreshData() {
-    const [txs, contacts, debts, payments, splits, splitParticipants, needs, needPeriods] = await Promise.all([
+    const [txs, contacts, debts, payments, splits, splitParticipants, needs, needPeriods, backupInfos] = await Promise.all([
       withTransaction(['transaksi'], 'readonly', tx => {
         return new Promise(res => {
           const r = tx.objectStore('transaksi').getAll();
@@ -271,6 +410,13 @@ const App = {
           r.onsuccess = () => res(r.result || []);
           r.onerror = () => res([]);
         });
+      }),
+      withTransaction(['cadangan_info'], 'readonly', tx => {
+        return new Promise(res => {
+          const r = tx.objectStore('cadangan_info').getAll();
+          r.onsuccess = () => res(r.result || []);
+          r.onerror = () => res([]);
+        });
       })
     ]);
 
@@ -286,6 +432,7 @@ const App = {
     this.patunganPesertaList = splitParticipants;
     this.kebutuhanList = needs;
     this.kebutuhanPeriodeList = needPeriods;
+    this.cadanganInfoList = backupInfos;
 
     await this.renderHome();
     this.renderDaftarTransaksi();
@@ -3598,6 +3745,489 @@ const App = {
     alert('Penyesuaian kas berhasil dicatat!');
   },
 
+  // ==================== TAHAP 6: MODUL CADANGAN, PULIHKAN & CSV ====================
+  setupDataDanCadangan() {
+    // Tombol Buka Modal Ekspor Cadangan
+    document.getElementById('btn-profil-ekspor-cadangan')?.addEventListener('click', () => {
+      document.getElementById('form-ekspor-error').hidden = true;
+      document.getElementById('inp-ekspor-pwd').value = '';
+      document.getElementById('inp-ekspor-pwd-confirm').value = '';
+      this.bukaModal('modal-ekspor-cadangan');
+    });
+  
+    document.getElementById('btn-close-ekspor-cadangan')?.addEventListener('click', () => {
+      this.tutupModal('modal-ekspor-cadangan');
+    });
+  
+    // Form Ekspor Cadangan Submit
+    document.getElementById('form-ekspor-cadangan')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.handleEksporCadanganTerenkripsi();
+    });
+  
+    // Tombol Pulihkan (Buka File Picker)
+    const filePicker = document.getElementById('inp-file-pulihkan');
+    document.getElementById('btn-profil-pulihkan-cadangan')?.addEventListener('click', () => {
+      filePicker.value = '';
+      filePicker.click();
+    });
+  
+    filePicker?.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+  
+      try {
+        const text = await file.text();
+        const envelope = JSON.parse(text);
+  
+        // Validasi awal amplop cadangan
+        if (!envelope || envelope.app !== 'dompet-rutin') {
+          alert('Berkas ditolak: Bukan berkas cadangan resmi Dompet Rutin.');
+          return;
+        }
+  
+        if (envelope.db_version !== 1) {
+          alert(`Versi cadangan ${envelope.db_version} tidak didukung aplikasi ini (versi 1).`);
+          return;
+        }
+  
+        this.pendingRestoreEnvelope = envelope;
+        document.getElementById('form-pulihkan-error').hidden = true;
+        document.getElementById('inp-pulihkan-pwd').value = '';
+        this.bukaModal('modal-pulihkan-password');
+      } catch (err) {
+        alert('Berkas rusak atau bukan format JSON yang valid.');
+      }
+    });
+  
+    document.getElementById('btn-close-pulihkan-pwd')?.addEventListener('click', () => {
+      this.tutupModal('modal-pulihkan-password');
+      this.pendingRestoreEnvelope = null;
+    });
+  
+    // Form Dekripsi Pulihkan Submit
+    document.getElementById('form-pulihkan-password')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.handleDekripsiDanValidasiCadangan();
+    });
+  
+    document.getElementById('btn-close-pulihkan-konfirm')?.addEventListener('click', () => {
+      this.tutupModal('modal-pulihkan-konfirmasi');
+      this.pendingRestoreObject = null;
+      this.pendingRestorePassword = null;
+    });
+  
+    document.getElementById('btn-batal-pulihkan-eksekusi')?.addEventListener('click', () => {
+      this.tutupModal('modal-pulihkan-konfirmasi');
+      this.pendingRestoreObject = null;
+      this.pendingRestorePassword = null;
+    });
+  
+    // Eksekusi Pulihkan Final (Unduh pengaman otomatis lalu timpa)
+    document.getElementById('btn-eksekusi-pulihkan-final')?.addEventListener('click', async () => {
+      await this.handleEksekusiPulihkanFinal();
+    });
+  
+    // Ekspor CSV Modal & Execution
+    document.getElementById('btn-profil-ekspor-csv')?.addEventListener('click', () => {
+      this.bukaModal('modal-ekspor-csv-warning');
+    });
+  
+    document.getElementById('btn-close-csv-warning')?.addEventListener('click', () => {
+      this.tutupModal('modal-ekspor-csv-warning');
+    });
+  
+    document.getElementById('btn-eksekusi-unduh-csv')?.addEventListener('click', () => {
+      this.tutupModal('modal-ekspor-csv-warning');
+      this.unduhDuaBerkasCSV();
+    });
+  },
+  
+  async buildFullDatabaseDumpObject() {
+    const storeNames = [
+      'pengaturan', 'kontak', 'kategori', 'transaksi', 'hutang',
+      'pembayaran_hutang', 'patungan', 'patungan_peserta',
+      'kebutuhan', 'kebutuhan_periode', 'berkas', 'cadangan_info'
+    ];
+  
+    const dataObj = {};
+  
+    await withTransaction(storeNames, 'readonly', (tx) => {
+      return Promise.all(storeNames.map(sName => {
+        return new Promise(res => {
+          const req = tx.objectStore(sName).getAll();
+          req.onsuccess = () => {
+            dataObj[sName] = req.result || [];
+            res();
+          };
+          req.onerror = () => {
+            dataObj[sName] = [];
+            res();
+          };
+        });
+      }));
+    });
+  
+    // Konversi blob pada store 'berkas' menjadi base64 terstruktur
+    if (Array.isArray(dataObj.berkas)) {
+      for (let i = 0; i < dataObj.berkas.length; i++) {
+        const item = dataObj.berkas[i];
+        if (item.blob instanceof Blob) {
+          const b64 = await Utils.blobToBase64(item.blob);
+          dataObj.berkas[i] = {
+            id: item.id,
+            mime: item.mime || 'image/png',
+            diubah_pada: item.diubah_pada,
+            base64Data: b64
+          };
+        }
+      }
+    }
+  
+    return {
+      app: 'dompet-rutin',
+      db_version: 1,
+      diekspor_pada: new Date().toISOString(),
+      data: dataObj
+    };
+  },
+  
+  async handleEksporCadanganTerenkripsi() {
+    const errBox = document.getElementById('form-ekspor-error');
+    errBox.hidden = true;
+  
+    const pwd = document.getElementById('inp-ekspor-pwd').value;
+    const pwdConfirm = document.getElementById('inp-ekspor-pwd-confirm').value;
+  
+    if (!pwd || pwd.length < 8) {
+      errBox.textContent = 'Kata sandi minimal 8 karakter.';
+      errBox.hidden = false;
+      return;
+    }
+  
+    if (pwd !== pwdConfirm) {
+      errBox.textContent = 'Konfirmasi kata sandi tidak cocok.';
+      errBox.hidden = false;
+      return;
+    }
+  
+    try {
+      const dumpObj = await this.buildFullDatabaseDumpObject();
+      const jsonString = JSON.stringify(dumpObj);
+  
+      const encryptedEnvelope = await CryptoBackup.encryptPayload(pwd, jsonString);
+      const envelopeString = JSON.stringify(encryptedEnvelope, null, 2);
+  
+      // Unduh berkas terenkripsi
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const fileName = `dompet-rutin-cadangan-${yyyy}${mm}${dd}-${hh}${min}.json`;
+  
+      const blob = new Blob([envelopeString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+  
+      // Catat metadata ke store cadangan_info (§9 PRD)
+      let totalCatatan = 0;
+      Object.keys(dumpObj.data).forEach(k => {
+        totalCatatan += (dumpObj.data[k] || []).length;
+      });
+  
+      const infoRecord = {
+        id: 'terakhir',
+        waktu_ekspor: new Date().toISOString(),
+        total_catatan: totalCatatan,
+        nama_berkas: fileName
+      };
+  
+      await withTransaction(['cadangan_info'], 'readwrite', tx => {
+        tx.objectStore('cadangan_info').put(infoRecord);
+      });
+  
+      this.tutupModal('modal-ekspor-cadangan');
+      await this.refreshData();
+      alert('Cadangan terenkripsi berhasil dibuat dan diunduh!');
+    } catch (err) {
+      console.error('Ekspor gagal:', err);
+      errBox.textContent = `Gagal mengenkripsi data: ${err.message}`;
+      errBox.hidden = false;
+    }
+  },
+  
+  async handleDekripsiDanValidasiCadangan() {
+    const errBox = document.getElementById('form-pulihkan-error');
+    errBox.hidden = true;
+  
+    const pwd = document.getElementById('inp-pulihkan-pwd').value;
+    if (!pwd) {
+      errBox.textContent = 'Masukkan kata sandi.';
+      errBox.hidden = false;
+      return;
+    }
+  
+    try {
+      const decryptedObject = await CryptoBackup.decryptPayload(pwd, this.pendingRestoreEnvelope);
+  
+      // Validasi berlapis ketat integritas relasi & nominal (§9 PRD)
+      this.validasiIntegritasCadangan(decryptedObject);
+  
+      this.pendingRestoreObject = decryptedObject;
+      this.pendingRestorePassword = pwd;
+  
+      // Siapkan ringkasan catatan untuk ditampilkan ke user
+      const d = decryptedObject.data;
+      const ringkasanHTML = `
+        <div class="detail-row"><span class="detail-label">Tanggal Cadangan</span><span class="detail-value">${Utils.formatTanggalIndo(decryptedObject.diekspor_pada.substring(0,10))}</span></div>
+        <div class="detail-row"><span class="detail-label">Transaksi</span><span class="detail-value">${(d.transaksi || []).length}</span></div>
+        <div class="detail-row"><span class="detail-label">Hutang & Piutang</span><span class="detail-value">${(d.hutang || []).length}</span></div>
+        <div class="detail-row"><span class="detail-label">Riwayat Pembayaran</span><span class="detail-value">${(d.pembayaran_hutang || []).length}</span></div>
+        <div class="detail-row"><span class="detail-label">Kontak Teman</span><span class="detail-value">${(d.kontak || []).length}</span></div>
+        <div class="detail-row"><span class="detail-label">Patungan</span><span class="detail-value">${(d.patungan || []).length}</span></div>
+        <div class="detail-row"><span class="detail-label">Kebutuhan Rutin</span><span class="detail-value">${(d.kebutuhan || []).length}</span></div>
+      `;
+  
+      document.getElementById('pulihkan-ringkasan-konten').innerHTML = ringkasanHTML;
+  
+      this.tutupModal('modal-pulihkan-password');
+      this.bukaModal('modal-pulihkan-konfirmasi');
+    } catch (err) {
+      console.warn('Dekripsi/Validasi gagal:', err);
+      errBox.textContent = err.message;
+      errBox.hidden = false;
+    }
+  },
+  
+  validasiIntegritasCadangan(payload) {
+    if (!payload || !payload.data || typeof payload.data !== 'object') {
+      throw new Error('Struktur data cadangan tidak lengkap.');
+    }
+  
+    const d = payload.data;
+    const kontakIds = new Set((d.kontak || []).map(k => k.id));
+    const hutangIds = new Set((d.hutang || []).map(h => h.id));
+    const patunganIds = new Set((d.patungan || []).map(p => p.id));
+    const kebutuhanIds = new Set((d.kebutuhan || []).map(k => k.id));
+    const transaksiIds = new Set((d.transaksi || []).map(t => t.id));
+  
+    // 1. Validasi Transaksi
+    (d.transaksi || []).forEach(t => {
+      if (t.kontak_id && !kontakIds.has(t.kontak_id)) {
+        throw new Error(`Integritas rusak: Transaksi "${t.nama}" merujuk kontak_id yang tidak ada.`);
+      }
+      if (t.hutang_id && !hutangIds.has(t.hutang_id)) {
+        throw new Error(`Integritas rusak: Transaksi "${t.nama}" merujuk hutang_id yang tidak ada.`);
+      }
+      if (t.patungan_id && !patunganIds.has(t.patungan_id)) {
+        throw new Error(`Integritas rusak: Transaksi "${t.nama}" merujuk patungan_id yang tidak ada.`);
+      }
+      if (t.kebutuhan_id && !kebutuhanIds.has(t.kebutuhan_id)) {
+        throw new Error(`Integritas rusak: Transaksi "${t.nama}" merujuk kebutuhan_id yang tidak ada.`);
+      }
+      if (typeof t.nominal !== 'number' || t.nominal < 0 || t.nominal > 999999999999) {
+        throw new Error(`Rentang nominal transaksi "${t.nama}" tidak valid.`);
+      }
+    });
+  
+    // 2. Validasi Hutang
+    (d.hutang || []).forEach(h => {
+      if (h.kontak_id && !kontakIds.has(h.kontak_id)) {
+        throw new Error(`Integritas rusak: Hutang "${h.keperluan}" merujuk kontak_id yang tidak ada.`);
+      }
+      if (h.patungan_id && !patunganIds.has(h.patungan_id)) {
+        throw new Error(`Integritas rusak: Hutang "${h.keperluan}" merujuk patungan_id yang tidak ada.`);
+      }
+      if (typeof h.nominal_awal !== 'number' || h.nominal_awal < 1 || h.nominal_awal > 999999999999) {
+        throw new Error(`Rentang nominal hutang "${h.keperluan}" tidak valid.`);
+      }
+    });
+  
+    // 3. Validasi Pembayaran Hutang
+    (d.pembayaran_hutang || []).forEach(p => {
+      if (!hutangIds.has(p.hutang_id)) {
+        throw new Error('Integritas rusak: Pembayaran hutang merujuk hutang_id yang tidak ada.');
+      }
+      if (p.transaksi_kas_id && !transaksiIds.has(p.transaksi_kas_id)) {
+        throw new Error('Integritas rusak: Pembayaran hutang merujuk transaksi_kas_id yang tidak ada.');
+      }
+      if (typeof p.nominal !== 'number' || p.nominal < 1 || p.nominal > 999999999999) {
+        throw new Error('Nominal pembayaran hutang tidak valid.');
+      }
+    });
+  
+    // 4. Validasi Patungan Peserta
+    (d.patungan_peserta || []).forEach(pp => {
+      if (!patunganIds.has(pp.patungan_id)) {
+        throw new Error('Integritas rusak: Peserta patungan merujuk patungan_id yang tidak ada.');
+      }
+      if (!kontakIds.has(pp.kontak_id)) {
+        throw new Error('Integritas rusak: Peserta patungan merujuk kontak_id yang tidak ada.');
+      }
+      if (pp.hutang_id && !hutangIds.has(pp.hutang_id)) {
+        throw new Error('Integritas rusak: Peserta patungan merujuk hutang_id yang tidak ada.');
+      }
+    });
+  
+    // 5. Validasi Kebutuhan Periode
+    (d.kebutuhan_periode || []).forEach(kp => {
+      if (!kebutuhanIds.has(kp.kebutuhan_id)) {
+        throw new Error('Integritas rusak: Periode kebutuhan merujuk kebutuhan_id yang tidak ada.');
+      }
+      if (kp.transaksi_id && !transaksiIds.has(kp.transaksi_id)) {
+        throw new Error('Integritas rusak: Periode kebutuhan merujuk transaksi_id yang tidak ada.');
+      }
+    });
+  },
+  
+  async handleEksekusiPulihkanFinal() {
+    if (!this.pendingRestoreObject || !this.pendingRestorePassword) return;
+  
+    try {
+      // 1. Unduh Cadangan Pengaman dari Data Saat Ini Terlebih Dahulu (PRD §9)
+      const currentDump = await this.buildFullDatabaseDumpObject();
+      const currentJsonStr = JSON.stringify(currentDump);
+      const pengamanEnvelope = await CryptoBackup.encryptPayload(this.pendingRestorePassword, currentJsonStr);
+  
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const safetyFileName = `dompet-rutin-pengaman-${yyyy}${mm}${dd}-${hh}${min}.json`;
+  
+      const safetyBlob = new Blob([JSON.stringify(pengamanEnvelope, null, 2)], { type: 'application/json' });
+      const safetyUrl = URL.createObjectURL(safetyBlob);
+      const safetyA = document.createElement('a');
+      safetyA.href = safetyUrl;
+      safetyA.download = safetyFileName;
+      safetyA.click();
+      URL.revokeObjectURL(safetyUrl);
+  
+      // 2. Timpa Seluruh Data dalam SATU Transaksi Atomik IndexedDB
+      const d = this.pendingRestoreObject.data;
+      const storeNames = [
+        'pengaturan', 'kontak', 'kategori', 'transaksi', 'hutang',
+        'pembayaran_hutang', 'patungan', 'patungan_peserta',
+        'kebutuhan', 'kebutuhan_periode', 'berkas', 'cadangan_info'
+      ];
+  
+      await withTransaction(storeNames, 'readwrite', (tx) => {
+        // Hapus isi seluruh store lama
+        storeNames.forEach(sName => {
+          tx.objectStore(sName).clear();
+        });
+  
+        // Tulis ulang isi store baru dari berkas cadangan
+        (d.pengaturan || []).forEach(item => tx.objectStore('pengaturan').put(item));
+        (d.kontak || []).forEach(item => tx.objectStore('kontak').add(item));
+        (d.kategori || []).forEach(item => tx.objectStore('kategori').add(item));
+        (d.transaksi || []).forEach(item => tx.objectStore('transaksi').add(item));
+        (d.hutang || []).forEach(item => tx.objectStore('hutang').add(item));
+        (d.pembayaran_hutang || []).forEach(item => tx.objectStore('pembayaran_hutang').add(item));
+        (d.patungan || []).forEach(item => tx.objectStore('patungan').add(item));
+        (d.patungan_peserta || []).forEach(item => tx.objectStore('patungan_peserta').add(item));
+        (d.kebutuhan || []).forEach(item => tx.objectStore('kebutuhan').add(item));
+        (d.kebutuhan_periode || []).forEach(item => tx.objectStore('kebutuhan_periode').add(item));
+  
+        // Kembalikan base64 berkas gambar ke format Blob
+        (d.berkas || []).forEach(item => {
+          let b = item.blob;
+          if (!b && item.base64Data) {
+            b = Utils.base64ToBlob(item.base64Data, item.mime || 'image/png');
+          }
+          tx.objectStore('berkas').put({
+            id: item.id,
+            blob: b,
+            mime: item.mime || 'image/png',
+            diubah_pada: item.diubah_pada
+          });
+        });
+  
+        // Catat info riwayat pulihkan
+        tx.objectStore('cadangan_info').put({
+          id: 'terakhir',
+          waktu_ekspor: this.pendingRestoreObject.diekspor_pada,
+          waktu_pulihkan: new Date().toISOString(),
+          total_catatan: Object.values(d).reduce((a, arr) => a + (Array.isArray(arr) ? arr.length : 0), 0),
+          nama_berkas: 'Dipulihkan dari berkas'
+        });
+      });
+  
+      alert('Data berhasil dipulihkan secara penuh! Sesi akan dimuat ulang.');
+      window.location.reload();
+    } catch (err) {
+      console.error('Pemulihan gagal:', err);
+      alert(`Gagal memulihkan data: ${err.message}. Data lama tetap utuh.`);
+    }
+  },
+  
+  unduhDuaBerkasCSV() {
+    const tglNow = new Date();
+    const tglFile = `${tglNow.getFullYear()}${String(tglNow.getMonth() + 1).padStart(2, '0')}${String(tglNow.getDate()).padStart(2, '0')}`;
+  
+    // 1. CSV Transaksi
+    const headerTx = ['Tanggal', 'Waktu', 'Tipe', 'Nama', 'Kategori', 'Nominal', 'Arah', 'Metode', 'Kontak', 'Catatan', 'Status'];
+    const rowsTx = this.transaksiList.map(t => {
+      const katObj = this.kategoriList.find(k => k.id === t.kategori_id);
+      const kontakObj = this.kontakList.find(k => k.id === t.kontak_id);
+      return [
+        t.tanggal,
+        t.waktu,
+        t.tipe,
+        `"${(t.nama || '').replace(/"/g, '""')}"`,
+        `"${(katObj ? katObj.nama : '').replace(/"/g, '""')}"`,
+        t.nominal,
+        t.arah_saldo,
+        t.metode,
+        `"${(kontakObj ? kontakObj.nama : '').replace(/"/g, '""')}"`,
+        `"${(t.catatan || '').replace(/"/g, '""')}"`,
+        t.dibatalkan ? 'Dibatalkan' : 'Aktif'
+      ].join(',');
+    });
+  
+    const csvTxContent = [headerTx.join(','), ...rowsTx].join('\r\n');
+    this.triggerDownloadFile(`dompet-rutin-transaksi-${tglFile}.csv`, csvTxContent, 'text/csv;charset=utf-8;');
+  
+    // 2. CSV Hutang & Piutang
+    const debtsMetric = Finance.hitungSemuaHutang(this.hutangList, this.pembayaranList);
+    const headerHutang = ['Tanggal', 'Arah', 'Kontak', 'Keperluan', 'Nominal_Awal', 'Terbayar', 'Sisa', 'Status'];
+    const rowsHutang = debtsMetric.hutangTerhitung.map(h => {
+      return [
+        h.tanggal,
+        h.arah,
+        `"${(h.kontak_nama_snapshot || '').replace(/"/g, '""')}"`,
+        `"${(h.keperluan || '').replace(/"/g, '""')}"`,
+        h.nominal_awal,
+        h.terbayar,
+        h.sisa,
+        h.status
+      ].join(',');
+    });
+  
+    const csvHutangContent = [headerHutang.join(','), ...rowsHutang].join('\r\n');
+    setTimeout(() => {
+      this.triggerDownloadFile(`dompet-rutin-hutang-${tglFile}.csv`, csvHutangContent, 'text/csv;charset=utf-8;');
+    }, 400);
+  },
+  
+  triggerDownloadFile(fileName, contentString, mimeType) {
+    const blob = new Blob([contentString], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
   async renderTabProfil() {
     const namaUser = await PengaturanDB.get('nama_pengguna') || 'Pengguna';
     const budgetVal = await PengaturanDB.get('budget_bulanan') || 0;
@@ -3616,6 +4246,28 @@ const App = {
     document.getElementById('txt-rekening-bank').textContent = bank || '-';
     document.getElementById('txt-rekening-nomor').textContent = no || '-';
     document.getElementById('txt-rekening-an').textContent = an || '-';
+
+    // Status Cadangan Terakhir (Tahap 6)
+    const infoCadangan = this.cadanganInfoList.find(c => c.id === 'terakhir');
+    const txtCadangan = document.getElementById('txt-cadangan-terakhir');
+    const boxPengingat = document.getElementById('box-pengingat-cadangan');
+
+    if (txtCadangan && boxPengingat) {
+      if (infoCadangan && infoCadangan.waktu_ekspor) {
+        const d = new Date(infoCadangan.waktu_ekspor);
+        const strTgl = Utils.formatTanggalIndo(infoCadangan.waktu_ekspor.substring(0, 10));
+        const strJam = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        txtCadangan.textContent = `Terakhir dicadangkan: ${strTgl}, ${strJam}`;
+
+        // Hitung apakah sudah lebih dari 30 hari
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+        boxPengingat.hidden = diffDays < 30;
+      } else {
+        txtCadangan.textContent = 'Belum pernah dicadangkan';
+        boxPengingat.hidden = false;
+      }
+    }
 
     // Gambar QRIS
     const qrisData = await withTransaction(['berkas'], 'readonly', tx => {
