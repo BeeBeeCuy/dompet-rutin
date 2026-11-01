@@ -2227,3 +2227,43 @@ background-color: #164229;
 .font-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
+
+/* ================= TAHAP 6: CADANGAN & PULIHKAN ================= */
+/* Kartu Cadangan & Pengingat */
+.card-cadangan {
+  border-left: 5px solid #2F6F4E;
+}
+.cadangan-meta-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+.box-pengingat-cadangan {
+  background: #F4F8F5;
+  border: 1px solid #D5E5DA;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.8rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+.pengingat-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.pengingat-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.alert-box-warning {
+  background: #FFF8F0;
+  border: 1px solid #F5D6B5;
+  color: #7A4100;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
