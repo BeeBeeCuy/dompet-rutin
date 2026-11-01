@@ -1872,3 +1872,358 @@ background-color: #164229;
   font-weight: 600;
   cursor: pointer;
 }
+
+
+/* ===================== TAHAP 5: PERIKSA PEMBAYARAN & PROFIL ===================== */
+/* ==================== KARTU PERIKSA PEMBAYARAN (§7.7) ==================== */
+.card-periksa {
+  background: linear-gradient(135deg, #FAF7F2, #FFFFFF);
+  border-left: 4px solid var(--terakota);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.95rem 1.15rem;
+}
+
+.periksa-card-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.periksa-icon-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--terakota-soft);
+  color: var(--terakota);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.periksa-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.periksa-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.badge-kandidat-count {
+  background-color: var(--terakota);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* Kartu Kandidat Masuk Usul */
+.periksa-kandidat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.kandidat-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.kandidat-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px dashed #EAE8DC;
+  padding-bottom: 0.5rem;
+}
+
+.kandidat-nominal {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--warna-masuk);
+}
+
+.usulan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.usul-item-row {
+  background: #F8FAF8;
+  border: 1px solid #D5E5DA;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.usul-item-row:active {
+  background: #E8F0EA;
+}
+
+.usul-badge-cicilan {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: #FEF3E6;
+  color: var(--warna-waspada);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.usul-badge-persis {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: var(--hijau-soft);
+  color: var(--hijau-tua);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.pratinjau-box {
+  background: #F9F8F2;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.95rem;
+  margin: 0.75rem 0 1rem;
+}
+
+/* ==================== TAB PROFIL (§7.8) ==================== */
+.card-profil-user {
+  background: linear-gradient(135deg, #FFFFFF, #F4F8F5);
+  border-left: 5px solid var(--hijau-tua);
+}
+
+.profil-user-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.profil-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--hijau-tua);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.profil-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profil-user-sapaan {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.profil-user-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.btn-icon-action {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hijau-tua);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* QRIS Section */
+.card-qris-container {
+  text-align: center;
+}
+
+.qris-preview-box {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FAFAF7;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.65rem;
+  overflow: hidden;
+  padding: 0.75rem;
+}
+
+.qris-image-view {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.qris-empty-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.qris-empty-icon {
+  font-size: 2.5rem;
+}
+
+.qris-legal-text {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0.45rem 0 0.85rem;
+}
+
+.qris-action-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Info Rekening */
+.rekening-display-body {
+  background: #FAFAFA;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.85rem;
+}
+
+.rek-item-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  font-size: 0.88rem;
+  border-bottom: 1px solid #F0EEE4;
+}
+
+.rek-item-row:last-child {
+  border-bottom: none;
+}
+
+.rek-label {
+  color: var(--text-muted);
+}
+
+.rek-val {
+  color: var(--text-dark);
+}
+
+.rekening-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* Settings List */
+.setting-list-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.setting-row-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.95rem 1.15rem;
+  border-bottom: 1px solid #F0EEE4;
+}
+
+.setting-row-item:last-child {
+  border-bottom: none;
+}
+
+.setting-row-item:active {
+  background: #FAF9F5;
+}
+
+.setting-item-title {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.setting-item-sub {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.setting-arrow {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.card-header-simple {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.badge-soft {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--hijau-soft);
+  color: var(--hijau-tua);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.type-toggle-btn.active#btn-type-pengeluaran,
+.type-toggle-btn.active#btn-arah-hutang,
+.type-toggle-btn.active#btn-jenis-tagihan,
+.type-toggle-btn.active#btn-arah-saldo-kurang {
+  background: var(--terakota);
+  color: white;
+}
+
+.type-toggle-btn.active#btn-type-pemasukan,
+.type-toggle-btn.active#btn-arah-piutang,
+.type-toggle-btn.active#btn-jenis-belanja,
+.type-toggle-btn.active#btn-arah-saldo-tambah {
+  background: var(--hijau-tua);
+  color: white;
+}
+
+/* Pelengkap Tahap 5 (kelas penanda di markup Gemini) */
+.setting-item-left { flex: 1; min-width: 0; }
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
