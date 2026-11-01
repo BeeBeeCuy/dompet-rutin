@@ -94,6 +94,7 @@ const App = {
 
   // Selected item state
   selectedTxForDetail: null,
+  selectedCandidateForLink: null,
   selectedHutangForDetail: null,
   selectedHutangForPayment: null,
   selectedPaymentToVoid: null,
@@ -131,6 +132,10 @@ const App = {
       this.setupKebutuhanTabEvents();
       this.setupKebutuhanForm();
       this.setupSelesaikanKebutuhanModal();
+
+      // Fitur Tahap 5: Periksa Pembayaran & Profil
+      this.setupPeriksaPembayaran();
+      this.setupProfilLengkap();
 
       // Pulihkan tab terakhir sebelum refresh (v1.4.1-t4)
       try {
@@ -286,6 +291,7 @@ const App = {
     this.renderDaftarTransaksi();
     this.renderTabHutang();
     this.renderTabKebutuhan();
+    await this.renderTabProfil();
     this.updateFABContext();
   },
 
@@ -564,6 +570,11 @@ const App = {
       this.bukaModalDaftarTeman();
     });
 
+    // Buka Modal Periksa Pembayaran Masuk (Tahap 5)
+    document.getElementById('card-periksa-pembayaran')?.addEventListener('click', () => {
+      this.bukaModalPeriksaPembayaran();
+    });
+
     document.getElementById('btn-toggle-lunas')?.addEventListener('click', () => {
       this.showLunasSection = !this.showLunasSection;
       const listLunas = document.getElementById('list-hutang-lunas');
@@ -587,6 +598,18 @@ const App = {
 
     document.getElementById('badge-count-piutang').textContent = piutangAktif.length;
     document.getElementById('badge-count-hutang').textContent = hutangAktif.length;
+
+    // Hitung kandidat Periksa Pembayaran Masuk (60 hari terakhir, PEMASUKAN QRIS/Transfer yang belum tertaut)
+    const kandidatPeriksa = this.cariKandidatPeriksaPembayaran();
+    const badgeKandidat = document.getElementById('badge-periksa-kandidat');
+    if (badgeKandidat) {
+      if (kandidatPeriksa.length > 0) {
+        badgeKandidat.textContent = `${kandidatPeriksa.length} Transaksi`;
+        badgeKandidat.hidden = false;
+      } else {
+        badgeKandidat.hidden = true;
+      }
+    }
 
     const listPiutang = document.getElementById('list-piutang-aktif');
     const emptyPiutang = document.getElementById('empty-piutang');
@@ -3066,6 +3089,559 @@ const App = {
     inpBudget.value = current > 0 ? current.toLocaleString('id-ID') : '';
     this.bukaModal('modal-budget-setting');
     inpBudget.focus();
+  },
+
+  // ===================== MESIN USUL PERIKSA PEMBAYARAN MASUK (§7.7 PRD) =====================
+  setupPeriksaPembayaran() {
+    document.getElementById('btn-close-periksa')?.addEventListener('click', () => {
+      this.tutupModal('modal-periksa-pembayaran');
+    });
+
+    document.getElementById('btn-close-pratinjau-penautan')?.addEventListener('click', () => {
+      this.tutupModal('modal-pratinjau-penautan');
+    });
+
+    document.getElementById('btn-batal-pratinjau-penautan')?.addEventListener('click', () => {
+      this.tutupModal('modal-pratinjau-penautan');
+    });
+
+    document.getElementById('btn-konfirmasi-penautan')?.addEventListener('click', async () => {
+      if (!this.selectedCandidateForLink) return;
+      await this.eksekusiPenautanUlangAtomik(this.selectedCandidateForLink.transaksi, this.selectedCandidateForLink.hutang);
+      this.tutupModal('modal-pratinjau-penautan');
+      this.tutupModal('modal-periksa-pembayaran');
+      await this.refreshData();
+    });
+  },
+
+  /**
+   * Memindai transaksi kas masuk bertipe PEMASUKAN dengan metode QRIS / Transfer
+   * yang belum tertaut ke hutang/pelunasan apa pun dalam 60 hari terakhir.
+   */
+  cariKandidatPeriksaPembayaran() {
+    const { now } = Utils.getWaktuJakarta();
+    const batasMillis60Hari = now.getTime() - (60 * 24 * 60 * 60 * 1000);
+
+    return this.transaksiList.filter(t => {
+      if (t.dibatalkan) return false;
+      if (t.tipe !== 'PEMASUKAN') return false; // Hanya tipe PEMASUKAN
+      if (t.metode !== 'QRIS GoPay' && t.metode !== 'Transfer BCA') return false; // Tunai (Cash) ditolak; nilai kanonis: QRIS GoPay / Transfer BCA
+      if (t.hutang_id || t.patungan_id || t.kebutuhan_id) return false; // Harus belum tertaut
+
+      const tDate = new Date(`${t.tanggal}T${t.waktu || '00:00'}`);
+      return tDate.getTime() >= batasMillis60Hari;
+    });
+  },
+
+  bukaModalPeriksaPembayaran() {
+    const container = document.getElementById('list-periksa-kandidat');
+    const emptyBox = document.getElementById('empty-periksa-kandidat');
+
+    const kandidatList = this.cariKandidatPeriksaPembayaran();
+    const debtsMetric = Finance.hitungSemuaHutang(this.hutangList, this.pembayaranList);
+    const piutangAktif = debtsMetric.hutangTerhitung.filter(h => h.arah === 'PIUTANG' && h.status !== 'LUNAS');
+
+    if (kandidatList.length === 0) {
+      container.innerHTML = '';
+      emptyBox.hidden = false;
+      this.bukaModal('modal-periksa-pembayaran');
+      return;
+    }
+
+    emptyBox.hidden = true;
+
+    // Untuk setiap transaksi kandidat, cari usulan hutang piutang aktif
+    let html = '';
+    kandidatList.forEach(tx => {
+      const nominalTx = tx.nominal;
+
+      // 1. Usul persis (sisa hutang == nominal transaksi)
+      const usulPersis = piutangAktif.filter(h => h.sisa === nominalTx);
+
+      // 2. Usul cicilan (sisa hutang > nominal transaksi)
+      const usulCicilan = piutangAktif.filter(h => h.sisa > nominalTx);
+
+      html += `
+        <div class="kandidat-card" data-tx-id="${tx.id}">
+          <div class="kandidat-header-row">
+            <div>
+              <div style="font-weight:700; font-size:0.95rem;">${tx.nama}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">${Utils.formatTanggalIndo(tx.tanggal)} ${tx.waktu} · ${tx.metode}</div>
+            </div>
+            <div class="kandidat-nominal">+${Utils.formatRupiah(nominalTx)}</div>
+          </div>
+
+          <div style="font-size:0.8rem; font-weight:700; color:var(--text-dark); margin-bottom:0.35rem;">
+            Pilih Hutang yang Dicocokkan:
+          </div>
+
+          <div class="usulan-list">
+      `;
+
+      if (usulPersis.length === 0 && usulCicilan.length === 0) {
+        html += `<div style="font-size:0.78rem; color:var(--text-muted); font-style:italic; padding:0.4rem 0;">Tidak ada piutang aktif yang cocok atau lebih besar dari nominal ini.</div>`;
+      } else {
+        // Tampilkan semua kandidat persis
+        usulPersis.forEach(h => {
+          html += `
+            <div class="usul-item-row" data-tx-id="${tx.id}" data-hutang-id="${h.id}">
+              <div>
+                <strong style="font-size:0.88rem; color:var(--text-dark);">${h.kontak_nama_snapshot}</strong>
+                <span class="usul-badge-persis">Sisa Persis</span>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${h.keperluan}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:800; font-size:0.95rem; color:var(--warna-masuk);">${Utils.formatRupiah(h.sisa)}</div>
+                <small style="font-size:0.68rem; color:var(--text-muted);">Klik tautkan</small>
+              </div>
+            </div>
+          `;
+        });
+
+        // Tampilkan kandidat cicilan
+        usulCicilan.forEach(h => {
+          html += `
+            <div class="usul-item-row" data-tx-id="${tx.id}" data-hutang-id="${h.id}">
+              <div>
+                <strong style="font-size:0.88rem; color:var(--text-dark);">${h.kontak_nama_snapshot}</strong>
+                <span class="usul-badge-cicilan">Cicilan?</span>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${h.keperluan}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-weight:800; font-size:0.95rem; color:var(--text-dark);">${Utils.formatRupiah(h.sisa)}</div>
+                <small style="font-size:0.68rem; color:var(--text-muted);">Sisa hutang</small>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      html += `
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    // Pasang handler klik pada tiap baris usulan
+    container.querySelectorAll('.usul-item-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const txId = row.getAttribute('data-tx-id');
+        const hId = row.getAttribute('data-hutang-id');
+        this.bukaDialogPratinjauPenautan(txId, hId);
+      });
+    });
+
+    this.bukaModal('modal-periksa-pembayaran');
+  },
+
+  bukaDialogPratinjauPenautan(transaksiId, hutangId) {
+    const tx = this.transaksiList.find(t => t.id === transaksiId);
+    const debtsMetric = Finance.hitungSemuaHutang(this.hutangList, this.pembayaranList);
+    const h = debtsMetric.hutangTerhitung.find(item => item.id === hutangId);
+    if (!tx || !h) return;
+
+    this.selectedCandidateForLink = { transaksi: tx, hutang: h };
+
+    const nominalBayar = tx.nominal;
+    const sisaBaru = Math.max(0, h.sisa - nominalBayar);
+    const statusBaru = sisaBaru === 0 ? 'LUNAS' : 'SEBAGIAN';
+
+    const content = document.getElementById('pratinjau-penautan-content');
+    content.innerHTML = `
+      <div class="detail-row">
+        <span class="detail-label">Transaksi Masuk</span>
+        <span class="detail-value">${tx.nama} (+${Utils.formatRupiah(tx.nominal)})</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Metode & Tanggal</span>
+        <span class="detail-value">${tx.metode} · ${Utils.formatTanggalIndo(tx.tanggal)}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Target Piutang</span>
+        <span class="detail-value">${h.kontak_nama_snapshot} (${h.keperluan})</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Sisa Hutang Saat Ini</span>
+        <span class="detail-value">${Utils.formatRupiah(h.sisa)}</span>
+      </div>
+      <div class="detail-row" style="background:#FFFDE8; padding:0.5rem; border-radius:4px;">
+        <span class="detail-label" style="font-weight:700; color:var(--text-dark);">Sisa Setelah Ditautkan</span>
+        <span class="detail-value" style="color:var(--warna-masuk); font-weight:800;">${Utils.formatRupiah(sisaBaru)} (${statusBaru})</span>
+      </div>
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.6rem; line-height:1.35;">
+        * Konsekuensi Akuntansi (§7.7 PRD):<br>
+        1. Transaksi diubah klasifikasinya menjadi <code>TERIMA_PELUNASAN</code>.<br>
+        2. Saldo Kas <strong>TIDAK BERUBAH</strong> (sudah masuk saat transaksi dicatat).<br>
+        3. Pemasukan Bulan ini berkurang tepat Rp${nominalBayar.toLocaleString('id-ID')} (dikoreksi bukan pendapatan konsumsi).
+      </div>
+    `;
+
+    this.bukaModal('modal-pratinjau-penautan');
+  },
+
+  /**
+   * Penautan Ulang Atomik (§7.7 PRD & Adopsi Audit v1.1)
+   */
+  async eksekusiPenautanUlangAtomik(txObj, hutangObj) {
+    const nowIso = new Date().toISOString();
+    const pembayaranId = Utils.generateUUID();
+
+    const payRecord = {
+      id: pembayaranId,
+      hutang_id: hutangObj.id,
+      nominal: txObj.nominal,
+      tanggal: txObj.tanggal,
+      waktu: txObj.waktu,
+      metode: txObj.metode,
+      catatan: `Penautan otomatis Periksa Pembayaran: ${txObj.nama}`,
+      sumber: 'PERIKSA',
+      transaksi_kas_id: txObj.id, // Tertaut langsung ke transaksi kas existing
+      tipe_transaksi_asal: txObj.tipe, // Audit trail tipe awal (PEMASUKAN)
+      dibatalkan: false,
+      alasan_batal: null,
+      dibuat_pada: nowIso,
+      diubah_pada: nowIso
+    };
+
+    await withTransaction(['transaksi', 'pembayaran_hutang'], 'readwrite', tx => {
+      // 1. Tulis Pembayaran Baru
+      tx.objectStore('pembayaran_hutang').add(payRecord);
+
+      // 2. Reklasifikasi Transaksi Kas
+      const storeTx = tx.objectStore('transaksi');
+      const reqT = storeTx.get(txObj.id);
+      reqT.onsuccess = () => {
+        const item = reqT.result;
+        if (item) {
+          item.tipe = 'TERIMA_PELUNASAN'; // Reklasifikasi menjadi pelunasan piutang
+          item.hutang_id = hutangObj.id;
+          item.kontak_id = hutangObj.kontak_id;
+          item.sumber = 'PERIKSA';
+          item.diubah_pada = nowIso;
+          storeTx.put(item);
+        }
+      };
+    });
+  },
+
+  // ===================== TAB PROFIL LENGKAP (§7.8 PRD) =====================
+  setupProfilLengkap() {
+    // Edit Nama Pengguna
+    document.getElementById('btn-profil-edit-nama')?.addEventListener('click', async () => {
+      const nama = await PengaturanDB.get('nama_pengguna') || '';
+      document.getElementById('inp-profil-nama').value = nama;
+      this.bukaModal('modal-edit-nama');
+    });
+
+    document.getElementById('btn-close-edit-nama')?.addEventListener('click', () => {
+      this.tutupModal('modal-edit-nama');
+    });
+
+    document.getElementById('form-edit-nama')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const val = document.getElementById('inp-profil-nama').value.trim();
+      if (!val) {
+        alert('Nama tidak boleh kosong.');
+        return;
+      }
+      await PengaturanDB.set('nama_pengguna', val);
+      this.tutupModal('modal-edit-nama');
+      await this.refreshData();
+    });
+
+    // Upload & Kelola QRIS
+    const fileInput = document.getElementById('inp-file-qris');
+    document.getElementById('btn-unggah-qris')?.addEventListener('click', () => fileInput.click());
+    document.getElementById('btn-ganti-qris')?.addEventListener('click', () => fileInput.click());
+
+    fileInput?.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('Pilih berkas gambar PNG atau JPG.');
+        return;
+      }
+
+      await withTransaction(['berkas'], 'readwrite', tx => {
+        tx.objectStore('berkas').put({
+          id: 'qris-saya',
+          blob: file,
+          mime: file.type,
+          diubah_pada: new Date().toISOString()
+        });
+      });
+
+      fileInput.value = '';
+      await this.renderTabProfil();
+      alert('Gambar QRIS berhasil disimpan di HP!');
+    });
+
+    document.getElementById('btn-hapus-qris')?.addEventListener('click', async () => {
+      if (confirm('Hapus gambar QRIS yang tersimpan?')) {
+        await withTransaction(['berkas'], 'readwrite', tx => {
+          tx.objectStore('berkas').delete('qris-saya');
+        });
+        await this.renderTabProfil();
+      }
+    });
+
+    document.getElementById('btn-bagikan-qris')?.addEventListener('click', async () => {
+      const qrisData = await withTransaction(['berkas'], 'readonly', tx => {
+        return new Promise(res => {
+          const r = tx.objectStore('berkas').get('qris-saya');
+          r.onsuccess = () => res(r.result || null);
+          r.onerror = () => res(null);
+        });
+      });
+
+      if (!qrisData || !qrisData.blob) return;
+
+      if (navigator.canShare && navigator.canShare({ files: [new File([qrisData.blob], 'qris-saya.png', { type: qrisData.mime })] })) {
+        try {
+          const fileToShare = new File([qrisData.blob], 'qris-pembayaran.png', { type: qrisData.mime });
+          await navigator.share({
+            files: [fileToShare],
+            title: 'QRIS Pembayaran',
+            text: 'Silakan scan QRIS ini untuk pembayaran/transfer.'
+          });
+        } catch (err) {
+          console.warn('Batal share file:', err);
+        }
+      } else {
+        // Fallback unduh gambar lokal
+        const url = URL.createObjectURL(qrisData.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'qris-pembayaran.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    // Info Rekening Pengguna
+    document.getElementById('btn-edit-rekening')?.addEventListener('click', async () => {
+      const bank = await PengaturanDB.get('rekening_bank') || '';
+      const no = await PengaturanDB.get('rekening_nomor') || '';
+      const an = await PengaturanDB.get('rekening_atas_nama') || '';
+
+      document.getElementById('inp-rek-bank').value = bank;
+      document.getElementById('inp-rek-nomor').value = no;
+      document.getElementById('inp-rek-an').value = an;
+
+      this.bukaModal('modal-edit-rekening');
+    });
+
+    document.getElementById('btn-close-edit-rek')?.addEventListener('click', () => {
+      this.tutupModal('modal-edit-rekening');
+    });
+
+    document.getElementById('form-edit-rekening')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const bank = document.getElementById('inp-rek-bank').value.trim();
+      const no = document.getElementById('inp-rek-nomor').value.trim();
+      const an = document.getElementById('inp-rek-an').value.trim();
+
+      if (!bank || !no || !an) {
+        alert('Mohon lengkapi semua data rekening.');
+        return;
+      }
+
+      await PengaturanDB.set('rekening_bank', bank);
+      await PengaturanDB.set('rekening_nomor', no);
+      await PengaturanDB.set('rekening_atas_nama', an);
+
+      this.tutupModal('modal-edit-rekening');
+      await this.renderTabProfil();
+    });
+
+    // Salin & Bagikan Rekening
+    document.getElementById('btn-salin-rekening')?.addEventListener('click', async () => {
+      const bank = await PengaturanDB.get('rekening_bank') || '';
+      const no = await PengaturanDB.get('rekening_nomor') || '';
+      const an = await PengaturanDB.get('rekening_atas_nama') || '';
+
+      if (!no) {
+        alert('Info rekening belum diatur. Ketuk "Atur Rekening" terlebih dahulu.');
+        return;
+      }
+
+      const text = `Pembayaran via Transfer:\nBank: ${bank}\nNo. Rekening: ${no}\nAtas Nama: ${an}`;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Info rekening berhasil disalin!');
+      }).catch(() => alert(text));
+    });
+
+    document.getElementById('btn-bagikan-rekening')?.addEventListener('click', async () => {
+      const bank = await PengaturanDB.get('rekening_bank') || '';
+      const no = await PengaturanDB.get('rekening_nomor') || '';
+      const an = await PengaturanDB.get('rekening_atas_nama') || '';
+
+      if (!no) {
+        alert('Info rekening belum diatur.');
+        return;
+      }
+
+      const text = `Pembayaran via Transfer:\nBank: ${bank}\nNo. Rekening: ${no}\nAtas Nama: ${an}`;
+      if (navigator.share) {
+        navigator.share({ text: text }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(text);
+        alert('Teks rekening disalin ke clipboard.');
+      }
+    });
+
+    // Profil Budget Click
+    document.getElementById('btn-profil-edit-budget')?.addEventListener('click', () => {
+      this.bukaModalBudget();
+    });
+
+    // Saldo Awal / Rekonsiliasi Kas Modal
+    document.getElementById('btn-profil-saldo-awal')?.addEventListener('click', () => {
+      this.bukaModalPenyesuaianKas();
+    });
+
+    document.getElementById('btn-close-penyesuaian')?.addEventListener('click', () => {
+      this.tutupModal('modal-penyesuaian-kas');
+    });
+
+    const inpPenyesuaianNom = document.getElementById('inp-penyesuaian-nominal');
+    inpPenyesuaianNom?.addEventListener('input', (e) => {
+      const val = Utils.parseRupiah(e.target.value);
+      e.target.value = val > 0 ? val.toLocaleString('id-ID') : '';
+    });
+
+    const btnArahTambah = document.getElementById('btn-arah-saldo-tambah');
+    const btnArahKurang = document.getElementById('btn-arah-saldo-kurang');
+
+    btnArahTambah?.addEventListener('click', () => {
+      btnArahTambah.classList.add('active');
+      btnArahKurang.classList.remove('active');
+    });
+
+    btnArahKurang?.addEventListener('click', () => {
+      btnArahKurang.classList.add('active');
+      btnArahTambah.classList.remove('active');
+    });
+
+    document.getElementById('form-penyesuaian-kas')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.handleSavePenyesuaianKas();
+    });
+  },
+
+  bukaModalPenyesuaianKas() {
+    const errBox = document.getElementById('form-penyesuaian-error');
+    errBox.hidden = true;
+    document.getElementById('inp-penyesuaian-nominal').value = '';
+    document.getElementById('inp-penyesuaian-catatan').value = '';
+    document.getElementById('btn-arah-saldo-tambah').classList.add('active');
+    document.getElementById('btn-arah-saldo-kurang').classList.remove('active');
+
+    this.bukaModal('modal-penyesuaian-kas');
+  },
+
+  async handleSavePenyesuaianKas() {
+    const errBox = document.getElementById('form-penyesuaian-error');
+    errBox.hidden = true;
+
+    const nominal = Utils.parseRupiah(document.getElementById('inp-penyesuaian-nominal').value);
+    const isKurang = document.getElementById('btn-arah-saldo-kurang').classList.contains('active');
+    const arah = isKurang ? '-' : '+';
+    const catatan = document.getElementById('inp-penyesuaian-catatan').value.trim();
+
+    if (nominal <= 0) {
+      errBox.textContent = 'Nominal penyesuaian harus lebih dari 0.';
+      errBox.hidden = false;
+      return;
+    }
+    if (!catatan) {
+      errBox.textContent = 'Alasan penyesuaian kas wajib diisi (PRD §5).';
+      errBox.hidden = false;
+      return;
+    }
+
+    const { tanggal, waktu } = Utils.getWaktuJakarta();
+    const nowIso = new Date().toISOString();
+
+    const txRecord = {
+      id: Utils.generateUUID(),
+      tipe: 'SALDO_AWAL',
+      nominal: nominal,
+      arah_saldo: arah,
+      nama: `Penyesuaian Kas (${arah === '+' ? 'Koreksi Lebih' : 'Koreksi Kurang'})`,
+      kategori_id: null,
+      tanggal: tanggal,
+      waktu: waktu,
+      metode: 'Cash',
+      catatan: catatan,
+      kontak_id: null,
+      hutang_id: null,
+      patungan_id: null,
+      kebutuhan_id: null,
+      kebutuhan_periode: null,
+      sumber: 'MANUAL',
+      dibatalkan: false,
+      alasan_batal: null,
+      dibuat_pada: nowIso,
+      diubah_pada: nowIso
+    };
+
+    await withTransaction(['transaksi'], 'readwrite', tx => {
+      tx.objectStore('transaksi').add(txRecord);
+    });
+
+    this.tutupModal('modal-penyesuaian-kas');
+    await this.refreshData();
+    alert('Penyesuaian kas berhasil dicatat!');
+  },
+
+  async renderTabProfil() {
+    const namaUser = await PengaturanDB.get('nama_pengguna') || 'Pengguna';
+    const budgetVal = await PengaturanDB.get('budget_bulanan') || 0;
+    const bank = await PengaturanDB.get('rekening_bank') || '';
+    const no = await PengaturanDB.get('rekening_nomor') || '';
+    const an = await PengaturanDB.get('rekening_atas_nama') || '';
+
+    // Nama & Avatar
+    document.getElementById('profil-nama-display').textContent = namaUser;
+    document.getElementById('profil-avatar-inisial').textContent = Utils.getInisial(namaUser);
+
+    // Budget
+    document.getElementById('profil-budget-val').textContent = budgetVal > 0 ? `${Utils.formatRupiah(budgetVal)} / bulan` : 'Belum diatur';
+
+    // Info Rekening
+    document.getElementById('txt-rekening-bank').textContent = bank || '-';
+    document.getElementById('txt-rekening-nomor').textContent = no || '-';
+    document.getElementById('txt-rekening-an').textContent = an || '-';
+
+    // Gambar QRIS
+    const qrisData = await withTransaction(['berkas'], 'readonly', tx => {
+      return new Promise(res => {
+        const r = tx.objectStore('berkas').get('qris-saya');
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+    });
+
+    const imgEl = document.getElementById('img-qris-saya');
+    const emptyBox = document.getElementById('qris-empty-box');
+    const actionBtns = document.getElementById('qris-action-buttons');
+
+    if (qrisData && qrisData.blob) {
+      const blobUrl = URL.createObjectURL(qrisData.blob);
+      imgEl.src = blobUrl;
+      imgEl.hidden = false;
+      emptyBox.hidden = true;
+      actionBtns.hidden = false;
+    } else {
+      imgEl.src = '';
+      imgEl.hidden = true;
+      emptyBox.hidden = false;
+      actionBtns.hidden = true;
+    }
   },
 
   // ==================== PENYIAPAN PERTAMA ====================
